@@ -1064,6 +1064,16 @@
 
     <div id="settings-key-status" style="font-size:0.85rem;margin-bottom:1rem;"></div>
 
+    <div class="form-field">
+      <label class="form-label">Claude Model</label>
+      <input class="form-input" id="settings-claude-model" type="text"
+             placeholder="claude-sonnet-4-5"
+             autocomplete="off" spellcheck="false" />
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">
+        Update this when Anthropic releases a new model. Default: claude-sonnet-4-5
+      </div>
+    </div>
+
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;">
       <button class="btn-sm" onclick="clearAnthropicKey()" style="color:var(--red);border-color:var(--red);">Clear key</button>
       <button class="btn-gold" onclick="saveSettingsAndClose()">Save</button>
@@ -1246,6 +1256,8 @@ const CONFIG = {
 
 // API keys stored in localStorage only — never in source code
 function getAnthropicKey() { return localStorage.getItem('stacks_anthropic_key') || ''; }
+function getClaudeModel() { return localStorage.getItem('stacks_claude_model') || 'claude-sonnet-4-5'; }
+function setClaudeModel(m) { localStorage.setItem('stacks_claude_model', m.trim()); }
 function setAnthropicKey(k) { localStorage.setItem('stacks_anthropic_key', k.trim()); }
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1520,7 +1532,7 @@ async function callClaude(prompt) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: getClaudeModel(),
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -2494,6 +2506,7 @@ function openSettingsModal() {
   input.value = key ? '••••••••••••••••••••' : '';
   input.dataset.hasKey = key ? 'true' : 'false';
   updateKeyStatus();
+  document.getElementById('settings-claude-model').value = getClaudeModel();
   document.getElementById('settings-modal').classList.remove('hidden');
   if (!key) setTimeout(() => { input.value = ''; input.focus(); }, 50);
 }
@@ -2522,6 +2535,8 @@ function saveSettingsAndClose() {
   } else if (!val) {
     notify('No key entered — existing key unchanged', false);
   }
+  const modelVal = document.getElementById('settings-claude-model').value.trim();
+  if (modelVal) setClaudeModel(modelVal);
   updateKeyStatus();
   closeSettingsModal();
 }

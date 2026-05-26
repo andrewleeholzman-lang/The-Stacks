@@ -1125,11 +1125,11 @@
       <div id="shelf-view" class="hidden">
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.5rem;">
           <div class="shelf-view-header">
-            <div class="shelf-view-title" id="sv-title"></div>
+            <div class="shelf-view-title" id="sv-title" title="Click to rename" onclick="startShelfRename()" style="cursor:pointer;" onmouseover="this.style.borderBottom='1px dashed var(--gold-dim)'" onmouseout="this.style.borderBottom='none'"></div>
             <div class="shelf-view-dewey" id="sv-dewey"></div>
           </div>
           <div style="display:flex;gap:0.6rem;align-items:center;">
-            <button class="btn-sm" onclick="consultLibrarian()" style="color:var(--gold-dim);border-color:var(--gold-dim);">📚 Consult Librarian</button>
+            <button class="btn-sm" onclick="consultLibrarian()" style="color:var(--gold-dim);border-color:var(--gold-dim);">📚 Consult Albert</button>
             <button class="btn-gold" onclick="openAddBookModal()">+ Add Book</button>
             <button class="btn-sm" onclick="deleteShelf()" style="color:var(--red);border-color:var(--red);">Delete Shelf</button>
           </div>
@@ -1243,7 +1243,7 @@
       <div class="form-field">
         <label class="form-label">Topic (for bibliography)</label>
         <input class="form-input" id="new-shelf-topic" placeholder="e.g. History of the Indian Ocean world" />
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">The AI librarian uses this to assemble your reading list.</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">Albert will assemble your reading list.</div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
         <button class="btn-gold" onclick="startCatalogueStep2()">Assemble Bibliography →</button>
@@ -1255,7 +1255,7 @@
       <div class="modal-title" id="step2-shelf-name"></div>
       <div id="step2-loading" style="text-align:center;padding:3rem 0;">
         <div class="spinner"></div>
-        <span style="color:var(--text-muted);font-style:italic;">The librarian is assembling your reading list…</span>
+        <span style="color:var(--text-muted);font-style:italic;">Albert is assembling your reading list…</span>
       </div>
       <div id="step2-content" class="hidden">
         <div class="ai-panel">
@@ -1396,7 +1396,7 @@
   </div>
 </div>
 
-<!-- Consult Librarian Modal -->
+<!-- Consult Albert Modal -->
 <div id="librarian-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeLibrarianModal()">
   <div class="modal" style="max-width:640px;">
     <button class="modal-close" onclick="closeLibrarianModal()">×</button>
@@ -1412,11 +1412,11 @@
 
     <!-- Step 1 -->
     <div id="lib-step1">
-      <div class="modal-title">Consult the Librarian</div>
+      <div class="modal-title">Consult Albert</div>
       <div class="modal-subtitle" id="lib-step1-subtitle"></div>
       <div class="ai-panel">
         <div class="ai-panel-icon">📚</div>
-        <div class="ai-panel-text">Tell me what you are looking for — a gap in your reading, a particular angle, a period or author you want more of. I will suggest additions that complement what is already on this shelf.</div>
+        <div class="ai-panel-text">Tell me what you are looking for — a gap in your reading, a particular angle, a period or author you want more of. Albert will suggest additions that complement what is already on this shelf.</div>
       </div>
       <div class="form-field">
         <label class="form-label">Your Request</label>
@@ -1432,7 +1432,7 @@
       <div class="modal-title" id="lib-step2-title"></div>
       <div id="lib-step2-loading" style="text-align:center;padding:3rem 0;">
         <div class="spinner"></div>
-        <span style="color:var(--text-muted);font-style:italic;">The librarian is considering your shelf…</span>
+        <span style="color:var(--text-muted);font-style:italic;">Albert is considering your shelf…</span>
       </div>
       <div id="lib-step2-content" class="hidden">
         <div class="ai-panel">
@@ -1820,7 +1820,7 @@ async function callClaude(prompt) {
 }
 
 async function assembleBibliography(topic) {
-  const prompt1 = `You are a scholarly librarian building a reading list for a personal library application called The Stacks. The user wants to create a shelf on the topic: "${topic}". Assemble the ideal reading list for a serious reader approaching this subject — the foundational works, the essential monographs, the key journal articles a graduate student or informed generalist would need. Do not consider availability or cost at this stage. Judge solely on scholarly merit, significance, and pedagogical value. Return a JSON object with two arrays: "books" (6–10 monographs or major works) and "articles" (2–4 key journal articles). Each item should have: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences on why this work is significant and where it fits in the literature), and suggested_order (integer). Prioritize foundational scholarly works. Return only valid JSON, no preamble.`;
+  const prompt1 = `You are Albert, the scholarly librarian of a personal library application called The Stacks. You have the manner of a well-read and quietly authoritative librarian — precise, unhurried, genuinely knowledgeable. The user wants to create a shelf on the topic: "${topic}". Assemble the ideal reading list for a serious reader approaching this subject — the foundational works, the essential monographs, the key journal articles a graduate student or informed generalist would need. Do not consider availability or cost at this stage. Judge solely on scholarly merit, significance, and pedagogical value. Return a JSON object with two arrays: "books" (6–10 monographs or major works) and "articles" (2–4 key journal articles). Each item should have: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences on why this work is significant and where it fits in the literature), and suggested_order (integer). Prioritize foundational scholarly works. Return only valid JSON, no preamble.`;
 
   const raw1 = await callClaude(prompt1);
   let bib;
@@ -1832,7 +1832,7 @@ async function assembleBibliography(topic) {
   }
 
   const titles = [...(bib.books||[]), ...(bib.articles||[])].map(b => b.title).join(', ');
-  const prompt2 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has created a shelf on the topic: "${topic}". The following titles are already on their ideal reading list: ${titles}. Now consider what additional worthwhile reading on this topic is freely available from the following sources: Standard Ebooks (standardebooks.org — free, public domain books typeset as PDF), OpenStax (open textbooks available as PDF), and Internet Archive open access collections (PDFs only). Identify any items from these sources that would be genuinely valuable additions to this shelf — do not include them simply because they are free, only if they have real merit. Also flag if any items from the existing list are themselves available from these sources. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array of new items with title, author, source, url, annotation) and "existing_available" (array of titles from the provided list that are freely available, with source and url). Return only valid JSON, no preamble.`;
+  const prompt2 = `You are Albert, the scholarly librarian of The Stacks. The user has created a shelf on the topic: "${topic}". The following titles are already on their ideal reading list: ${titles}. Now consider what additional worthwhile reading on this topic is freely available from the following sources: Standard Ebooks (standardebooks.org — free, public domain books typeset as PDF), OpenStax (open textbooks available as PDF), and Internet Archive open access collections (PDFs only). Identify any items from these sources that would be genuinely valuable additions to this shelf — do not include them simply because they are free, only if they have real merit. Also flag if any items from the existing list are themselves available from these sources. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array of new items with title, author, source, url, annotation) and "existing_available" (array of titles from the provided list that are freely available, with source and url). Return only valid JSON, no preamble.`;
 
   const raw2 = await callClaude(prompt2);
   let freeData;
@@ -2124,14 +2124,18 @@ function renderShelfGrid() {
     card.innerHTML = `
       <div class="book-spine-large" style="background:${spineColor(book.id)};${!book.driveFileId ? 'border:2px dashed var(--border2);opacity:0.75;' : ''}" onclick="${book.driveFileId ? `openReader('${book.id}')` : `openPlaceholderUpload('${book.id}')`}">
         <div class="book-cover-title">${book.title}</div>
+        ${book.status === 'complete' ? '<div style="position:absolute;top:6px;right:6px;font-size:1.1rem;color:var(--green);text-shadow:0 1px 3px rgba(0,0,0,0.7);">✓</div>' : ''}
         <div class="spine-progress"><div class="spine-progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="book-card-meta">
-        <div class="book-card-title">${book.title}</div>
+        <div class="book-card-title">${book.title}${book.status === 'complete' ? ' <span style="color:var(--green);">✓</span>' : ''}</div>
         <div class="book-card-author">${book.author}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.2rem;">
           <div class="book-card-status ${statusClass}">${statusText}</div>
-          <button onclick="deleteBook('${book.id}')" title="Remove book" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+          <div style="display:flex;gap:0.4rem;align-items:center;">
+            ${book.status !== 'complete' ? `<button onclick="markBookRead('${book.id}')" title="Mark as finished" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.78rem;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">✓</button>` : ''}
+            <button onclick="deleteBook('${book.id}')" title="Remove book" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+          </div>
         </div>
       </div>
     `;
@@ -2331,7 +2335,7 @@ function renderBibliography(bib, freeData) {
   const freeAvailableTitles = (freeData.existing_available || []).map(f => f.title.toLowerCase());
 
   document.getElementById('ai-panel-message').textContent =
-    `I've assembled the essential reading list for this subject. Below are the foundational works and key articles a serious student of this topic should encounter. Items marked in green can be fetched directly to your shelf; grey items you'll need to source yourself.`;
+    `Albert has assembled the essential reading list for this subject. Below are the foundational works and key articles a serious student of this topic should encounter. Grey items you will need to source yourself — click any placeholder card on your shelf to upload the PDF when you have it.`;
 
   // Books section
   const booksSection = document.getElementById('bib-books-section');
@@ -2874,6 +2878,56 @@ document.addEventListener('DOMContentLoaded', () => {
 // DELETE SHELF
 // ═══════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════
+// SHELF RENAME
+// ═══════════════════════════════════════════════════════
+function startShelfRename() {
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  if (!shelf) return;
+  const el = document.getElementById('sv-title');
+  const current = shelf.name;
+  el.innerHTML = '';
+  const input = document.createElement('input');
+  input.value = current;
+  input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--gold);color:var(--text);font-family:var(--font-head);font-size:inherit;font-weight:inherit;width:100%;outline:none;padding:0;';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newName = input.value.trim();
+    if (!newName || newName === current) {
+      el.textContent = current;
+      return;
+    }
+    state.metadata.shelves[state.currentShelfId].name = newName;
+    el.textContent = newName;
+    await saveMetadata();
+    renderSidebar();
+    notify(`Shelf renamed to "${newName}"`);
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { el.textContent = current; }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// MARK BOOK AS READ
+// ═══════════════════════════════════════════════════════
+async function markBookRead(bookId) {
+  const book = state.metadata.books[bookId];
+  if (!book) return;
+  book.status = 'complete';
+  if (book.totalPages) book.currentPage = book.totalPages;
+  await saveMetadata();
+  switchShelfTab('shelf');
+  notify(`"${book.title}" marked as finished ✓`);
+}
+
 async function deleteBook(bookId) {
   const book = state.metadata.books[bookId];
   if (!book) return;
@@ -2926,7 +2980,7 @@ function consultLibrarian() {
   document.getElementById('lib-step1-dot').className = 'step-dot active';
   document.getElementById('lib-step2-dot').className = 'step-dot';
   document.getElementById('lib-step3-dot').className = 'step-dot';
-  document.getElementById('lib-step1-subtitle').textContent = `Adding to: ${shelf.name}`;
+  document.getElementById('lib-step1-subtitle').textContent = `Albert is adding to: ${shelf.name}`;
   document.getElementById('librarian-prompt').value = '';
   state.librarianData = null;
 
@@ -2973,7 +3027,7 @@ async function assembleLibrarianBibliography(shelf, existingTitles, userPrompt) 
     ? `The shelf already contains: ${existingTitles.join('; ')}.`
     : 'The shelf has no books yet.';
 
-  const prompt1 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has a shelf called "${shelf.name}" on the topic: "${shelf.topic || shelf.name}". ${existingList} The user is asking for additional recommendations with this specific request: "${userPrompt}". Suggest 4–8 books or articles that would complement what is already on the shelf. Do not suggest any title that is already on the shelf — check carefully against the existing list. Return a JSON object with two arrays: "books" (monographs) and "articles" (journal articles). Each item: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences), suggested_order (integer, continuing from ${existingTitles.length + 1}). Return only valid JSON, no preamble.`;
+  const prompt1 = `You are Albert, the scholarly librarian of The Stacks. The user has a shelf called "${shelf.name}" on the topic: "${shelf.topic || shelf.name}". ${existingList} The user is asking for additional recommendations with this specific request: "${userPrompt}". Suggest 4–8 books or articles that would complement what is already on the shelf. Do not suggest any title that is already on the shelf — check carefully against the existing list. Return a JSON object with two arrays: "books" (monographs) and "articles" (journal articles). Each item: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences), suggested_order (integer, continuing from ${existingTitles.length + 1}). Return only valid JSON, no preamble.`;
 
   const raw1 = await callClaude(prompt1);
   let bib;
@@ -2984,7 +3038,7 @@ async function assembleLibrarianBibliography(shelf, existingTitles, userPrompt) 
   }
 
   const titles = [...(bib.books||[]), ...(bib.articles||[])].map(b => b.title).join(', ');
-  const prompt2 = `You are a scholarly librarian. The following titles have been suggested for a shelf on "${shelf.topic || shelf.name}": ${titles}. Check which of these are freely available as PDF from: Standard Ebooks (standardebooks.org), OpenStax, or Internet Archive open access. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array with title, author, source, url, annotation) and "existing_available" (array of titles from the list that are freely available as PDF, with source and url). Return only valid JSON, no preamble.`;
+  const prompt2 = `You are Albert, the scholarly librarian of The Stacks. The following titles have been suggested for a shelf on "${shelf.topic || shelf.name}": ${titles}. Check which of these are freely available as PDF from: Standard Ebooks (standardebooks.org), OpenStax, or Internet Archive open access. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array with title, author, source, url, annotation) and "existing_available" (array of titles from the list that are freely available as PDF, with source and url). Return only valid JSON, no preamble.`;
 
   const raw2 = await callClaude(prompt2);
   let freeData;
@@ -3002,7 +3056,7 @@ function renderLibrarianBibliography(bib, freeData, existingTitles) {
   const freeAvailableTitles = (freeData.existing_available || []).map(f => f.title.toLowerCase());
 
   document.getElementById('lib-ai-message').textContent =
-    `Here are my suggestions to complement what is already on your shelf. Items already in your collection have been excluded. Check what you would like to add.`;
+    `Here are Albert's suggestions to complement what is already on your shelf. Items already in your collection have been excluded. Check what you would like to add.`;
 
   const booksSection = document.getElementById('lib-bib-books-section');
   booksSection.innerHTML = '<div class="bib-section-title">Suggested Monographs</div>';

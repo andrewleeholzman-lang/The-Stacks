@@ -996,7 +996,11 @@
             <div class="shelf-view-title" id="sv-title"></div>
             <div class="shelf-view-dewey" id="sv-dewey"></div>
           </div>
-          <button class="btn-gold" onclick="openAddBookModal()">+ Add Book</button>
+          <div style="display:flex;gap:0.6rem;align-items:center;">
+            <button class="btn-sm" onclick="consultLibrarian()" style="color:var(--gold-dim);border-color:var(--gold-dim);">📚 Consult Librarian</button>
+            <button class="btn-gold" onclick="openAddBookModal()">+ Add Book</button>
+            <button class="btn-sm" onclick="deleteShelf()" style="color:var(--red);border-color:var(--red);">Delete Shelf</button>
+          </div>
         </div>
         <div class="shelf-tabs">
           <div class="shelf-tab active" id="tab-shelf" onclick="switchShelfTab('shelf')">Shelf View</div>
@@ -1242,6 +1246,72 @@
     </div>
   </div>
 </div>
+
+<!-- Consult Librarian Modal -->
+<div id="librarian-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeLibrarianModal()">
+  <div class="modal" style="max-width:640px;">
+    <button class="modal-close" onclick="closeLibrarianModal()">×</button>
+
+    <!-- Step indicator (reused style) -->
+    <div class="step-indicator" style="margin-bottom:2.5rem;">
+      <div class="step-dot active" id="lib-step1-dot">1<span class="step-label">Your request</span></div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="lib-step2-dot">2<span class="step-label">Suggestions</span></div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="lib-step3-dot">3<span class="step-label">Add to shelf</span></div>
+    </div>
+
+    <!-- Step 1 -->
+    <div id="lib-step1">
+      <div class="modal-title">Consult the Librarian</div>
+      <div class="modal-subtitle" id="lib-step1-subtitle"></div>
+      <div class="ai-panel">
+        <div class="ai-panel-icon">📚</div>
+        <div class="ai-panel-text">Tell me what you are looking for — a gap in your reading, a particular angle, a period or author you want more of. I will suggest additions that complement what is already on this shelf.</div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Your Request</label>
+        <input class="form-input" id="librarian-prompt" placeholder="e.g. More on the economic history side, or primary sources from the period" />
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
+        <button class="btn-gold" onclick="startLibrarianStep2()">Ask the Librarian →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="lib-step2" class="hidden">
+      <div class="modal-title" id="lib-step2-title"></div>
+      <div id="lib-step2-loading" style="text-align:center;padding:3rem 0;">
+        <div class="spinner"></div>
+        <span style="color:var(--text-muted);font-style:italic;">The librarian is considering your shelf…</span>
+      </div>
+      <div id="lib-step2-content" class="hidden">
+        <div class="ai-panel">
+          <div class="ai-panel-icon">📚</div>
+          <div class="ai-panel-text" id="lib-ai-message"></div>
+        </div>
+        <div id="lib-bib-books-section"></div>
+        <div id="lib-bib-articles-section"></div>
+        <div id="lib-bib-free-section"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
+          <button class="btn-gold" onclick="startLibrarianStep3()">Add Selected →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div id="lib-step3" class="hidden">
+      <div class="modal-title">Adding to Your Shelf</div>
+      <div class="modal-subtitle" id="lib-step3-subtitle"></div>
+      <div id="lib-step3-items"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;">
+        <span id="lib-step3-count" style="color:var(--text-muted);font-size:0.9rem;font-style:italic;"></span>
+        <button class="btn-gold" onclick="finishLibrarianFlow()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -1562,7 +1632,7 @@ async function assembleBibliography(topic) {
   }
 
   const titles = [...(bib.books||[]), ...(bib.articles||[])].map(b => b.title).join(', ');
-  const prompt2 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has created a shelf on the topic: "${topic}". The following titles are already on their ideal reading list: ${titles}. Now consider what additional worthwhile reading on this topic is freely available from the following sources: Project Gutenberg (public domain books), OpenStax (open textbooks), and Internet Archive open access collections. Identify any items from these sources that would be genuinely valuable additions to this shelf — do not include them simply because they are free, only if they have real merit. Also flag if any items from the existing list are themselves available from these sources. Return a JSON object with: "free_additions" (array of new items with title, author, source, url, annotation) and "existing_available" (array of titles from the provided list that are freely available, with source and url). Return only valid JSON, no preamble.`;
+  const prompt2 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has created a shelf on the topic: "${topic}". The following titles are already on their ideal reading list: ${titles}. Now consider what additional worthwhile reading on this topic is freely available from the following sources: Standard Ebooks (standardebooks.org — free, public domain books typeset as PDF), OpenStax (open textbooks available as PDF), and Internet Archive open access collections (PDFs only). Identify any items from these sources that would be genuinely valuable additions to this shelf — do not include them simply because they are free, only if they have real merit. Also flag if any items from the existing list are themselves available from these sources. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array of new items with title, author, source, url, annotation) and "existing_available" (array of titles from the provided list that are freely available, with source and url). Return only valid JSON, no preamble.`;
 
   const raw2 = await callClaude(prompt2);
   let freeData;
@@ -2616,6 +2686,243 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+
+// ═══════════════════════════════════════════════════════
+// DELETE SHELF
+// ═══════════════════════════════════════════════════════
+async function deleteShelf() {
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  if (!shelf) return;
+  const bookCount = Object.values(state.metadata.books || {}).filter(b => b.shelfId === state.currentShelfId).length;
+  const confirmed = window.confirm(
+    `Delete "${shelf.name}"?\n\n` +
+    `This will remove the shelf and its ${bookCount} book record${bookCount !== 1 ? 's' : ''} from The Stacks metadata. ` +
+    `Your PDF files in Google Drive will not be deleted — they stay in the "${shelf.name}" folder.\n\n` +
+    `This cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  // Remove all books on this shelf from metadata
+  Object.keys(state.metadata.books).forEach(id => {
+    if (state.metadata.books[id].shelfId === state.currentShelfId) {
+      delete state.metadata.books[id];
+    }
+  });
+  delete state.metadata.shelves[state.currentShelfId];
+  state.currentShelfId = null;
+  await saveMetadata();
+  renderSidebar();
+  showHome();
+  notify(`"${shelf.name}" removed from The Stacks`);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONSULT LIBRARIAN (add to existing shelf)
+// ═══════════════════════════════════════════════════════
+function consultLibrarian() {
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  if (!shelf) return;
+
+  // Reset modal state
+  document.getElementById('lib-step1').classList.remove('hidden');
+  document.getElementById('lib-step2').classList.add('hidden');
+  document.getElementById('lib-step3').classList.add('hidden');
+  document.getElementById('lib-step1-dot').className = 'step-dot active';
+  document.getElementById('lib-step2-dot').className = 'step-dot';
+  document.getElementById('lib-step3-dot').className = 'step-dot';
+  document.getElementById('lib-step1-subtitle').textContent = `Adding to: ${shelf.name}`;
+  document.getElementById('librarian-prompt').value = '';
+  state.librarianData = null;
+
+  document.getElementById('librarian-modal').classList.remove('hidden');
+}
+
+function closeLibrarianModal() {
+  document.getElementById('librarian-modal').classList.add('hidden');
+  // Refresh shelf view in case books were added
+  if (state.currentShelfId) switchShelfTab('shelf');
+}
+
+async function startLibrarianStep2() {
+  const userPrompt = document.getElementById('librarian-prompt').value.trim();
+  if (!userPrompt) { notify('Please describe what you are looking for.', true); return; }
+
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  const existingBooks = Object.values(state.metadata.books || {})
+    .filter(b => b.shelfId === state.currentShelfId)
+    .map(b => b.title);
+
+  document.getElementById('lib-step1-dot').className = 'step-dot done';
+  document.getElementById('lib-step2-dot').className = 'step-dot active';
+  document.getElementById('lib-step1').classList.add('hidden');
+  document.getElementById('lib-step2').classList.remove('hidden');
+  document.getElementById('lib-step2-title').textContent = shelf.name;
+  document.getElementById('lib-step2-loading').classList.remove('hidden');
+  document.getElementById('lib-step2-content').classList.add('hidden');
+
+  try {
+    const { bib, freeData } = await assembleLibrarianBibliography(shelf, existingBooks, userPrompt);
+    state.librarianData = { bib, freeData, shelfId: state.currentShelfId };
+    renderLibrarianBibliography(bib, freeData, existingBooks);
+    document.getElementById('lib-step2-loading').classList.add('hidden');
+    document.getElementById('lib-step2-content').classList.remove('hidden');
+  } catch(e) {
+    notify('Librarian error: ' + e.message, true);
+    document.getElementById('lib-step2-loading').innerHTML = `<div style="color:var(--red);">Error: ${e.message}</div>`;
+  }
+}
+
+async function assembleLibrarianBibliography(shelf, existingTitles, userPrompt) {
+  const existingList = existingTitles.length > 0
+    ? `The shelf already contains: ${existingTitles.join('; ')}.`
+    : 'The shelf has no books yet.';
+
+  const prompt1 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has a shelf called "${shelf.name}" on the topic: "${shelf.topic || shelf.name}". ${existingList} The user is asking for additional recommendations with this specific request: "${userPrompt}". Suggest 4–8 books or articles that would complement what is already on the shelf. Do not suggest any title that is already on the shelf — check carefully against the existing list. Return a JSON object with two arrays: "books" (monographs) and "articles" (journal articles). Each item: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences), suggested_order (integer, continuing from ${existingTitles.length + 1}). Return only valid JSON, no preamble.`;
+
+  const raw1 = await callClaude(prompt1);
+  let bib;
+  try {
+    bib = JSON.parse(raw1.replace(/\`\`\`json|\`\`\`/g, '').trim());
+  } catch(e) {
+    throw new Error('Could not parse librarian response');
+  }
+
+  const titles = [...(bib.books||[]), ...(bib.articles||[])].map(b => b.title).join(', ');
+  const prompt2 = `You are a scholarly librarian. The following titles have been suggested for a shelf on "${shelf.topic || shelf.name}": ${titles}. Check which of these are freely available as PDF from: Standard Ebooks (standardebooks.org), OpenStax, or Internet Archive open access. Only suggest items available as actual PDF files, not EPUB or other formats. Return a JSON object with: "free_additions" (array with title, author, source, url, annotation) and "existing_available" (array of titles from the list that are freely available as PDF, with source and url). Return only valid JSON, no preamble.`;
+
+  const raw2 = await callClaude(prompt2);
+  let freeData;
+  try {
+    freeData = JSON.parse(raw2.replace(/\`\`\`json|\`\`\`/g, '').trim());
+  } catch(e) {
+    freeData = { free_additions: [], existing_available: [] };
+  }
+
+  return { bib, freeData };
+}
+
+function renderLibrarianBibliography(bib, freeData, existingTitles) {
+  const existingLower = existingTitles.map(t => t.toLowerCase());
+  const freeAvailableTitles = (freeData.existing_available || []).map(f => f.title.toLowerCase());
+
+  document.getElementById('lib-ai-message').textContent =
+    `Here are my suggestions to complement what is already on your shelf. Items already in your collection have been excluded. Check what you would like to add.`;
+
+  const booksSection = document.getElementById('lib-bib-books-section');
+  booksSection.innerHTML = '<div class="bib-section-title">Suggested Monographs</div>';
+  (bib.books || []).forEach(book => {
+    const isDupe = existingLower.includes(book.title.toLowerCase());
+    const isFree = freeAvailableTitles.includes(book.title.toLowerCase());
+    const freeInfo = isFree ? freeData.existing_available.find(f => f.title.toLowerCase() === book.title.toLowerCase()) : null;
+    if (isDupe) return; // skip silently — already filtered by prompt but double-check
+    booksSection.appendChild(makeBibItem(book, isFree, freeInfo, 'book'));
+  });
+
+  const articlesSection = document.getElementById('lib-bib-articles-section');
+  articlesSection.innerHTML = '<div class="bib-section-title">Suggested Articles</div>';
+  (bib.articles || []).forEach(article => {
+    if (existingLower.includes(article.title.toLowerCase())) return;
+    articlesSection.appendChild(makeBibItem(article, false, null, 'article'));
+  });
+
+  const freeSection = document.getElementById('lib-bib-free-section');
+  const newFreeAdditions = (freeData.free_additions || []).filter(f => !existingLower.includes(f.title.toLowerCase()));
+  if (newFreeAdditions.length > 0) {
+    freeSection.innerHTML = '<div class="bib-section-title">Also Freely Available — from Open Sources</div>';
+    newFreeAdditions.forEach(item => {
+      freeSection.appendChild(makeBibItem(item, true, item, 'free'));
+    });
+  } else {
+    freeSection.innerHTML = '';
+  }
+}
+
+async function startLibrarianStep3() {
+  if (!state.librarianData) return;
+  const { bib, freeData, shelfId } = state.librarianData;
+  const shelf = state.metadata.shelves[shelfId];
+
+  document.getElementById('lib-step2-dot').className = 'step-dot done';
+  document.getElementById('lib-step3-dot').className = 'step-dot active';
+  document.getElementById('lib-step2').classList.add('hidden');
+  document.getElementById('lib-step3').classList.remove('hidden');
+
+  const existingTitles = Object.values(state.metadata.books || {})
+    .filter(b => b.shelfId === shelfId)
+    .map(b => b.title.toLowerCase());
+
+  const allBibItems = [
+    ...(bib.books || []).map(b => ({ ...b, type: 'book' })),
+    ...(bib.articles || []).map(a => ({ ...a, type: 'article' })),
+    ...((freeData.free_additions || []).filter(f => !existingTitles.includes(f.title.toLowerCase()))).map(f => ({ ...f, type: 'free', dewey_decimal: '' })),
+  ].filter(item => !existingTitles.includes((item.title||'').toLowerCase()));
+
+  const checkedItems = [...document.querySelectorAll('#lib-bib-books-section .bib-check:checked, #lib-bib-articles-section .bib-check:checked, #lib-bib-free-section .bib-check:checked')]
+    .map(cb => allBibItems.find(b => b.title === cb.dataset.title))
+    .filter(Boolean);
+
+  // Deduplicate against existing
+  const uniqueChecked = checkedItems.filter(item => !existingTitles.includes((item.title||'').toLowerCase()));
+
+  document.getElementById('lib-step3-subtitle').textContent = `Adding ${uniqueChecked.length} new item${uniqueChecked.length !== 1 ? 's' : ''} to ${shelf.name}`;
+
+  const container = document.getElementById('lib-step3-items');
+  container.innerHTML = '';
+  let addedCount = 0;
+
+  for (const item of uniqueChecked) {
+    const isFree = item.type === 'free' || !!(freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase());
+    const freeInfo = isFree ? (freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase()) || item : null;
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'bib-item book-item';
+    itemDiv.style.marginBottom = '0.5rem';
+
+    if (isFree && freeInfo && freeInfo.url) {
+      const bookId = addBookToMetadata(shelfId, item, null, freeInfo);
+      addedCount++;
+      itemDiv.innerHTML = `
+        <div class="bib-info" style="flex:1;">
+          <div class="bib-title">${item.title}</div>
+          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">Freely available — download then upload below.</div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
+            <a href="${freeInfo.url}" target="_blank" class="btn-sm" style="color:var(--gold-dim);border-color:var(--gold-dim);text-decoration:none;">↗ Open source</a>
+            <label style="cursor:pointer;">
+              <input type="file" accept=".pdf" style="display:none" onchange="fulfillPlaceholder(event, '${bookId}')">
+              <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Upload PDF</span>
+            </label>
+            <span class="placeholder-done-${bookId}" style="color:var(--green);font-size:0.8rem;display:none;">✓ Uploaded</span>
+          </div>
+        </div>`;
+    } else {
+      itemDiv.innerHTML = `
+        <div class="bib-info" style="flex:1;">
+          <div class="bib-title">${item.title}</div>
+          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-shrink:0;">
+          <label style="cursor:pointer;">
+            <input type="file" accept=".pdf" style="display:none" onchange="handleStep3File(event, '${shelfId}', '${(item.title||'').replace(/'/g,"\'")}', '${(item.author||'').replace(/'/g,"\'")}')">
+            <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Browse</span>
+          </label>
+          <button class="btn-sm" onclick="skipStep3Item(this, '${shelfId}', '${(item.title||'').replace(/'/g,"\'")}', '${(item.author||'').replace(/'/g,"\'")}')">Skip</button>
+        </div>`;
+    }
+    container.appendChild(itemDiv);
+  }
+
+  document.getElementById('lib-step3-count').textContent = `${addedCount} of ${uniqueChecked.length} items ready`;
+  await saveMetadata();
+  renderSidebar();
+}
+
+async function finishLibrarianFlow() {
+  await saveMetadata();
+  closeLibrarianModal();
+  notify('Shelf updated');
+}
 
 // ═══════════════════════════════════════════════════════
 // BOOT

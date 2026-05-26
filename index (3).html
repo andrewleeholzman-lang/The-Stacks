@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Stacks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --bg: #1a1208;
+    --bg-deep: #0f0b05;
+    --surface: #211608;
+    --surface2: #2a1c0a;
+    --gold: #c9a84c;
+    --gold-dim: #8a6e2f;
+    --gold-bright: #e8c56a;
+    --text: #e8dcc8;
+    --text-muted: #6b5a3a;
+    --text-dim: #9a8060;
+    --border: #2a1f0a;
+    --border2: #3a2e1a;
+    --green: #7ab87a;
+    --green-bg: #1a2e1a;
+    --green-border: #5a8a5a;
+    --blue: #7aaab8;
+    --blue-bg: #1a252e;
+    --blue-border: #4a6a8a;
+    --journal-border: #4a6a8a;
+    --red: #c87a7a;
+    --radius: 3px;
+    --font-head: 'Playfair Display', Georgia, serif;
+    --font-body: 'Crimson Pro', Georgia, serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── AUTH SCREEN ── */
+  #auth-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: var(--bg-deep);
+    gap: 2rem;
+  }
+  #auth-screen h1 {
+    font-family: var(--font-head);
+    font-size: 3.5rem;
+    font-weight: 400;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+  #auth-screen p {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 1.1rem;
+    text-align: center;
+    max-width: 420px;
+  }
+  .auth-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: var(--font-head);
+    font-size: 1rem;
+    padding: 0.85rem 2rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .auth-btn:hover { background: var(--surface); border-color: var(--gold); color: var(--gold-bright); }
+  .auth-divider {
+    width: 1px;
+    height: 60px;
+    background: var(--border2);
+  }
+  .auth-tagline {
+    font-family: var(--font-head);
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    height: 52px;
+    background: var(--bg-deep);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    gap: 1rem;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  #topbar-title {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+  }
+  #topbar-spacer { flex: 1; }
+  #apod-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+    max-width: 280px;
+  }
+  #apod-widget:hover { border-color: var(--border2); }
+  #apod-thumb { width: 34px; height: 34px; object-fit: cover; border-radius: 2px; }
+  #apod-title { font-size: 0.75rem; color: var(--text-dim); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  #sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── MAIN LAYOUT ── */
+  #app-shell {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 230px;
+    background: var(--bg-deep);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  #sidebar-inner {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+  }
+  #sidebar-inner::-webkit-scrollbar { width: 4px; }
+  #sidebar-inner::-webkit-scrollbar-track { background: transparent; }
+  #sidebar-inner::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .sidebar-section-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.5rem 1.2rem 0.3rem;
+    font-family: var(--font-head);
+  }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 1.2rem;
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .sidebar-link:hover { color: var(--text); background: rgba(201,168,76,0.04); }
+  .sidebar-link.active { color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.06); }
+  .sidebar-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.75rem 1.2rem;
+  }
+  #new-shelf-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.2rem;
+    color: var(--gold-dim);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.15s;
+    font-family: var(--font-body);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+  #new-shelf-btn:hover { color: var(--gold); }
+
+  /* ── MAIN CONTENT ── */
+  #main-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  #main-content::-webkit-scrollbar { width: 6px; }
+  #main-content::-webkit-scrollbar-track { background: transparent; }
+  #main-content::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* ── CONTINUE READING BAR ── */
+  #continue-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
+  }
+  #continue-bar .cb-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    flex-shrink: 0;
+  }
+  #continue-bar .cb-title {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    color: var(--text);
+    flex: 1;
+  }
+  #continue-bar .cb-author { font-style: italic; color: var(--text-dim); }
+  #continue-bar .cb-progress { font-size: 0.85rem; color: var(--text-muted); }
+  .btn-gold {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    padding: 0.4rem 1.1rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    letter-spacing: 0.06em;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-gold:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); color: var(--gold-bright); }
+
+  /* ── HOME SCREEN ── */
+  #home-screen { padding: 2rem; }
+  .home-section-title {
+    font-family: var(--font-head);
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .shelf-row { margin-bottom: 2.5rem; }
+  .shelf-row-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+    cursor: pointer;
+  }
+  .shelf-row-name {
+    font-family: var(--font-head);
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--text);
+    transition: color 0.15s;
+  }
+  .shelf-row-header:hover .shelf-row-name { color: var(--gold); }
+  .shelf-row-dewey { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+  .spine-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* ── SPINE CARD ── */
+  .spine-card {
+    width: 40px;
+    height: 160px;
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border-left: 3px solid rgba(0,0,0,0.3);
+  }
+  .spine-card:hover { transform: translateY(-4px) scaleX(1.05); box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 2; }
+  .spine-card .spine-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--font-head);
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    padding: 6px 4px;
+    line-height: 1.2;
+    overflow: hidden;
+    max-height: 130px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+  }
+  .spine-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(0,0,0,0.3);
+  }
+  .spine-progress-fill {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.3s;
+  }
+  .spine-card.placeholder {
+    border: 2px dashed var(--border2);
+    background: transparent !important;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .spine-card.placeholder:hover { border-color: var(--gold-dim); color: var(--gold-dim); }
+
+  /* ── FOOTER ── */
+  #home-footer {
+    margin-top: auto;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--border);
+  }
+  #shakespeare-quote {
+    border-left: 3px solid var(--gold-dim);
+    padding-left: 1rem;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+  #shakespeare-quote .attribution {
+    font-style: normal;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+
+  /* ── SHELF DETAIL VIEW ── */
+  #shelf-view { padding: 2rem; }
+  .shelf-view-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .shelf-view-title {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .shelf-view-dewey { color: var(--text-muted); font-style: italic; }
+  .shelf-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .shelf-tab {
+    padding: 0.5rem 1.2rem;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .shelf-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .shelf-tab:hover:not(.active) { color: var(--text-dim); }
+  .book-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  .book-card {
+    width: 120px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .book-spine-large {
+    width: 120px;
+    height: 180px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    position: relative;
+    overflow: hidden;
+    border-left: 5px solid rgba(0,0,0,0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+  }
+  .book-spine-large:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.5); }
+  .book-spine-large .book-cover-title {
+    font-family: var(--font-head);
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.9);
+    text-align: center;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    line-height: 1.3;
+  }
+  .book-spine-large .spine-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(0,0,0,0.3);
+  }
+  .book-card-meta { font-size: 0.8rem; }
+  .book-card-title { font-family: var(--font-head); color: var(--text); font-size: 0.85rem; line-height: 1.3; }
+  .book-card-author { color: var(--text-dim); font-style: italic; }
+  .book-card-status { font-size: 0.72rem; color: var(--text-muted); }
+  .book-card-status.finished { color: var(--green); }
+  .book-card-status.reading { color: var(--gold-dim); }
+
+  /* ── READING ORDER TAB ── */
+  .reading-order-list { display: flex; flex-direction: column; gap: 1rem; max-width: 680px; }
+  .ro-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .ro-num {
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    color: var(--gold-dim);
+    font-weight: 300;
+    flex-shrink: 0;
+    width: 2rem;
+    text-align: right;
+  }
+  .ro-info { flex: 1; }
+  .ro-title { font-family: var(--font-head); font-size: 1rem; color: var(--text); }
+  .ro-author { font-style: italic; color: var(--text-dim); font-size: 0.9rem; }
+  .ro-annotation { color: var(--text-dim); font-size: 0.88rem; margin-top: 0.3rem; font-style: italic; }
+  .ro-dewey { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  /* ── PDF READER ── */
+  #reader-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-deep);
+  }
+  #reader-topbar {
+    height: 48px;
+    background: var(--bg-deep);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+  #reader-back {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.5rem;
+    transition: color 0.15s;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  #reader-back:hover { color: var(--text); }
+  #reader-book-title {
+    font-family: var(--font-head);
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    flex: 1;
+  }
+  #reader-progress-text { font-size: 0.85rem; color: var(--text-muted); }
+  #bookmark-btn {
+    background: none;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold-dim);
+    font-family: var(--font-head);
+    font-size: 0.8rem;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  #bookmark-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.08); }
+  #bookmark-btn.saved { border-color: var(--green-border); color: var(--green); }
+  #reader-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .reader-nav-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text-muted);
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    transition: all 0.15s;
+  }
+  .reader-nav-btn:hover { border-color: var(--border2); color: var(--text); }
+  #page-input {
+    width: 50px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    text-align: center;
+    padding: 0.2rem;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+  }
+  #reader-canvas-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 1.5rem;
+    background: #111;
+  }
+  #pdf-canvas {
+    max-width: 100%;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.7);
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(3px);
+  }
+  .modal {
+    background: var(--bg-deep);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 2rem;
+    max-width: 620px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+  }
+  .modal::-webkit-scrollbar { width: 4px; }
+  .modal::-webkit-scrollbar-thumb { background: var(--border2); }
+  .modal-title {
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+  }
+  .modal-subtitle {
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+  .modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .form-field { margin-bottom: 1.2rem; }
+  .form-label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    margin-bottom: 0.4rem;
+  }
+  .form-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { outline: none; border-color: var(--gold-dim); }
+  .form-input::placeholder { color: var(--text-muted); }
+
+  /* ── CATALOGUE FLOW ── */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2rem;
+  }
+  .step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step-dot.active { border-color: var(--gold); color: var(--gold); }
+  .step-dot.done { border-color: var(--green-border); background: var(--green-bg); color: var(--green); }
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border2);
+  }
+  .step-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    letter-spacing: 0.08em;
+    position: absolute;
+    bottom: -1.4rem;
+    white-space: nowrap;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .step-dot.active .step-label { color: var(--gold); }
+
+  /* AI Librarian Panel */
+  .ai-panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-start;
+  }
+  .ai-panel-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+  .ai-panel-text {
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    font-family: var(--font-head);
+  }
+
+  /* Bibliography items */
+  .bib-section-title {
+    font-family: var(--font-head);
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 1.2rem 0 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .bib-item {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    transition: border-color 0.15s;
+    border-left-width: 3px;
+  }
+  .bib-item.book-item { border-left-color: var(--border2); }
+  .bib-item.journal-item { border-left-color: var(--journal-border); }
+  .bib-item.free-item { border-left-color: var(--green-border); }
+  .bib-item:hover { border-color: var(--border2); }
+  .bib-check { flex-shrink: 0; margin-top: 3px; accent-color: var(--gold); width: 16px; height: 16px; cursor: pointer; }
+  .bib-info { flex: 1; }
+  .bib-title { font-family: var(--font-head); font-size: 0.95rem; color: var(--text); }
+  .bib-author { font-style: italic; color: var(--text-dim); font-size: 0.85rem; }
+  .bib-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+  .bib-annotation { font-size: 0.85rem; color: var(--text-dim); font-style: italic; margin-top: 0.4rem; line-height: 1.5; }
+  .bib-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-family: var(--font-head);
+    letter-spacing: 0.04em;
+    margin-top: 0.4rem;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+  .badge-grey { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border2); }
+
+  /* Add book modal tabs */
+  .modal-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border2);
+  }
+  .modal-tab {
+    padding: 0.5rem 1.2rem;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .modal-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 2.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--gold-dim); color: var(--text-dim); background: rgba(201,168,76,0.03); }
+  .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin-top: 0.3rem;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Notification */
+  #notification {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--gold);
+    padding: 0.7rem 1.2rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    color: var(--text);
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+    font-family: var(--font-body);
+  }
+  #notification.show { opacity: 1; transform: translateY(0); }
+  #notification.error { border-left-color: var(--red); }
+
+  /* Utility */
+  .hidden { display: none !important; }
+  .text-gold { color: var(--gold); }
+  .flex-center { display: flex; align-items: center; justify-content: center; }
+  .gap-1 { gap: 0.5rem; }
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .btn-sm {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--border2); color: var(--text); }
+  .ol-candidate {
+    padding: 0.5rem 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    margin-bottom: 0.4rem;
+    transition: border-color 0.15s;
+  }
+  .ol-candidate:hover { border-color: var(--gold-dim); }
+  .ol-candidate-title { font-family: var(--font-head); font-size: 0.95rem; color: var(--text); }
+  .ol-candidate-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+  /* APOD Modal */
+  #apod-modal-img { width: 100%; border-radius: var(--radius); margin-bottom: 1rem; }
+  #apod-modal-title { font-family: var(--font-head); font-size: 1.3rem; color: var(--gold); margin-bottom: 0.5rem; }
+  #apod-modal-explanation { color: var(--text-dim); font-size: 0.95rem; line-height: 1.7; font-style: italic; }
+
+  /* Shelf select */
+  .form-select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .form-select:focus { outline: none; border-color: var(--gold-dim); }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div style="text-align:center">
+    <div style="font-family:var(--font-head);font-size:0.85rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.8rem;">A Personal Library</div>
+    <h1>The Stacks</h1>
+  </div>
+  <div class="auth-divider"></div>
+  <p>Connect your Google Drive to begin. Your library lives in your Drive — portable, permanent, and yours.</p>
+  <button class="auth-btn" id="google-sign-in-btn">
+    <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Connect Google Drive
+  </button>
+  <div class="auth-tagline">— est. in your Drive —</div>
+</div>
+
+<!-- MAIN APP (hidden until authed) -->
+<div id="app" class="hidden" style="display:flex;flex-direction:column;height:100vh;">
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <div id="topbar-title">The Stacks</div>
+    <div id="topbar-spacer"></div>
+    <div id="apod-widget" onclick="showApodModal()">
+      <img id="apod-thumb" src="" alt="APOD" style="display:none">
+      <span id="apod-title" style="color:var(--text-muted);font-style:italic;font-size:0.78rem;">Loading today's sky…</span>
+    </div>
+    <div id="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Synced</span>
+    </div>
+    <button onclick="openSettingsModal()" title="Settings" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:0.3rem 0.4rem;transition:color 0.15s;line-height:1;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">⚙</button>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app-shell">
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div id="sidebar-inner">
+        <div class="sidebar-section-label">Quick Access</div>
+        <div class="sidebar-link" id="nav-home" onclick="showHome()">📚 All Shelves</div>
+        <div class="sidebar-link" id="nav-reading" onclick="showReading()">📖 Currently Reading</div>
+        <div class="sidebar-link" id="nav-recent" onclick="showRecent()">🕐 Recently Added</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-label">Shelves</div>
+        <div id="shelf-nav-list"></div>
+        <div class="sidebar-divider"></div>
+        <button id="new-shelf-btn" onclick="openNewShelfModal()">＋ New Shelf</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content">
+
+      <!-- Continue Reading Bar -->
+      <div id="continue-bar" class="hidden">
+        <span class="cb-label">Continue</span>
+        <span class="cb-title">
+          <span id="cb-book-title"></span>
+          <span class="cb-author"> — <span id="cb-book-author"></span></span>
+        </span>
+        <span class="cb-progress" id="cb-book-progress"></span>
+        <button class="btn-gold" id="cb-open-btn">Open →</button>
+      </div>
+
+      <!-- HOME SCREEN -->
+      <div id="home-screen" class="hidden">
+        <div id="shelves-container"></div>
+        <div id="home-footer">
+          <div id="shakespeare-quote">
+            <div id="sq-text"></div>
+            <div class="attribution" id="sq-attribution"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHELF DETAIL VIEW -->
+      <div id="shelf-view" class="hidden">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.5rem;">
+          <div class="shelf-view-header">
+            <div class="shelf-view-title" id="sv-title"></div>
+            <div class="shelf-view-dewey" id="sv-dewey"></div>
+          </div>
+          <button class="btn-gold" onclick="openAddBookModal()">+ Add Book</button>
+        </div>
+        <div class="shelf-tabs">
+          <div class="shelf-tab active" id="tab-shelf" onclick="switchShelfTab('shelf')">Shelf View</div>
+          <div class="shelf-tab" id="tab-order" onclick="switchShelfTab('order')">Reading Order</div>
+          <div class="shelf-tab" id="tab-progress" onclick="switchShelfTab('progress')">Progress</div>
+        </div>
+        <div id="sv-shelf-content"></div>
+        <div id="sv-order-content" class="hidden"></div>
+        <div id="sv-progress-content" class="hidden"></div>
+      </div>
+
+      <!-- READER VIEW -->
+      <div id="reader-view" class="hidden" style="flex:1;display:flex;flex-direction:column;">
+        <div id="reader-topbar">
+          <button id="reader-back" onclick="closeReader()">← Back</button>
+          <div id="reader-book-title"></div>
+          <div id="reader-nav">
+            <button class="reader-nav-btn" onclick="prevPage()">‹</button>
+            <input type="number" id="page-input" min="1" onchange="jumpToPage(this.value)">
+            <span style="color:var(--text-muted);font-size:0.85rem;">of <span id="total-pages">—</span></span>
+            <button class="reader-nav-btn" onclick="nextPage()">›</button>
+          </div>
+          <div id="reader-progress-text"></div>
+          <button id="bookmark-btn" onclick="placeBookmark()">🔖 Bookmark</button>
+        </div>
+        <div id="reader-canvas-container">
+          <canvas id="pdf-canvas"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notification"></div>
+
+<!-- MODALS -->
+
+<!-- APOD Modal -->
+<div id="apod-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal" style="max-width:700px;">
+    <button class="modal-close" onclick="document.getElementById('apod-modal').classList.add('hidden')">×</button>
+    <img id="apod-modal-img" src="" alt="">
+    <div id="apod-modal-title"></div>
+    <div id="apod-modal-explanation"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal" style="max-width:480px;">
+    <button class="modal-close" onclick="closeSettingsModal()">×</button>
+    <div class="modal-title">Settings</div>
+    <div class="modal-subtitle">Stored in your browser only — never in the source code.</div>
+
+    <div class="form-field">
+      <label class="form-label">Anthropic API Key</label>
+      <input class="form-input" id="settings-anthropic-key" type="password"
+             placeholder="sk-ant-api03-…"
+             autocomplete="off" spellcheck="false" />
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;font-style:italic;">
+        Used for AI bibliography generation. Saved to localStorage — never sent anywhere except the Anthropic API.
+      </div>
+    </div>
+
+    <div id="settings-key-status" style="font-size:0.85rem;margin-bottom:1rem;"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;">
+      <button class="btn-sm" onclick="clearAnthropicKey()" style="color:var(--red);border-color:var(--red);">Clear key</button>
+      <button class="btn-gold" onclick="saveSettingsAndClose()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Shelf Modal -->
+<div id="new-shelf-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeNewShelfModal()">
+  <div class="modal" style="max-width:640px;">
+    <button class="modal-close" onclick="closeNewShelfModal()">×</button>
+
+    <!-- Step indicator -->
+    <div class="step-indicator" style="margin-bottom:2.5rem;">
+      <div class="step-dot active" id="step1-dot">1<span class="step-label">Name shelf</span></div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="step2-dot">2<span class="step-label">Bibliography</span></div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="step3-dot">3<span class="step-label">Build shelf</span></div>
+    </div>
+
+    <!-- Step 1 -->
+    <div id="catalogue-step1">
+      <div class="modal-title">New Shelf</div>
+      <div class="modal-subtitle">Name your shelf and describe its subject.</div>
+      <div class="form-field">
+        <label class="form-label">Shelf Name</label>
+        <input class="form-input" id="new-shelf-name" placeholder="e.g. Indian Ocean History" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Topic (for bibliography)</label>
+        <input class="form-input" id="new-shelf-topic" placeholder="e.g. History of the Indian Ocean world" />
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">The AI librarian uses this to assemble your reading list.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
+        <button class="btn-gold" onclick="startCatalogueStep2()">Assemble Bibliography →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="catalogue-step2" class="hidden">
+      <div class="modal-title" id="step2-shelf-name"></div>
+      <div id="step2-loading" style="text-align:center;padding:3rem 0;">
+        <div class="spinner"></div>
+        <span style="color:var(--text-muted);font-style:italic;">The librarian is assembling your reading list…</span>
+      </div>
+      <div id="step2-content" class="hidden">
+        <div class="ai-panel">
+          <div class="ai-panel-icon">📚</div>
+          <div class="ai-panel-text" id="ai-panel-message"></div>
+        </div>
+        <div id="bib-books-section"></div>
+        <div id="bib-articles-section"></div>
+        <div id="bib-free-section"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
+          <button class="btn-gold" onclick="startCatalogueStep3()">Fetch to Shelf →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div id="catalogue-step3" class="hidden">
+      <div class="modal-title">Building Your Shelf</div>
+      <div class="modal-subtitle" id="step3-subtitle"></div>
+      <div id="step3-items"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;">
+        <span id="step3-count" style="color:var(--text-muted);font-size:0.9rem;font-style:italic;"></span>
+        <button class="btn-gold" onclick="finishShelfCreation()">Finish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Book Modal -->
+<div id="add-book-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeAddBookModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAddBookModal()">×</button>
+    <div class="modal-title">Add a Book</div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="add-tab-pdf" onclick="switchAddTab('pdf')">I have a PDF</div>
+      <div class="modal-tab" id="add-tab-placeholder" onclick="switchAddTab('placeholder')">Add Placeholder</div>
+    </div>
+
+    <!-- Tab A: PDF -->
+    <div id="add-pdf-content">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleFileDrop(event)">
+        <div class="drop-zone-icon">📄</div>
+        <div>Drop a PDF here or click to browse</div>
+        <div style="font-size:0.8rem;margin-top:0.3rem;color:var(--text-muted);">File will be named automatically</div>
+      </div>
+      <input type="file" id="file-input" accept=".pdf" class="hidden" onchange="handleFileSelect(event)">
+
+      <div id="book-meta-form" class="hidden" style="margin-top:1.2rem;">
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;">
+          <div style="flex:1">
+            <div class="form-field">
+              <label class="form-label">Title</label>
+              <input class="form-input" id="meta-title" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Author</label>
+              <input class="form-input" id="meta-author" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Year</label>
+              <input class="form-input" id="meta-year" style="width:100px" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Publisher</label>
+              <input class="form-input" id="meta-publisher" />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Dewey Decimal</label>
+              <input class="form-input" id="meta-dewey" style="width:120px" />
+            </div>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Add to Shelf</label>
+          <select class="form-select" id="meta-shelf"></select>
+        </div>
+        <div id="wrong-book-section" style="margin-bottom:1rem;">
+          <span style="font-size:0.85rem;color:var(--text-muted);font-style:italic;">Wrong book? </span>
+          <span style="font-size:0.85rem;color:var(--gold-dim);cursor:pointer;" onclick="showManualSearch()">Search manually →</span>
+        </div>
+        <div id="manual-search-section" class="hidden">
+          <div class="form-field">
+            <label class="form-label">Search Open Library</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input class="form-input" id="manual-search-input" placeholder="Title or author" style="flex:1" />
+              <button class="btn-gold" onclick="doManualSearch()">Search</button>
+            </div>
+          </div>
+          <div id="search-candidates"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+          <button class="btn-gold" onclick="confirmAddBook()">Add to Shelf</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab B: Placeholder -->
+    <div id="add-placeholder-content" class="hidden">
+      <div class="form-field">
+        <label class="form-label">Search for a Book</label>
+        <div style="display:flex;gap:0.5rem;">
+          <input class="form-input" id="placeholder-search-input" placeholder="Title or author" style="flex:1" />
+          <button class="btn-gold" onclick="doPlaceholderSearch()">Search</button>
+        </div>
+      </div>
+      <div id="placeholder-candidates"></div>
+      <div id="placeholder-selected" class="hidden">
+        <div class="bib-item book-item" id="placeholder-selected-info"></div>
+        <div class="form-field" style="margin-top:1rem;">
+          <label class="form-label">Add to Shelf</label>
+          <select class="form-select" id="placeholder-shelf"></select>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+          <button class="btn-gold" onclick="confirmAddPlaceholder()">Add Placeholder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════
+const CONFIG = {
+  CLIENT_ID: '411117886113-tsuf2cpajnklcov106kvhohluq7t66bc.apps.googleusercontent.com',
+  NASA_KEY: 'DEMO_KEY',
+  SCOPES: 'https://www.googleapis.com/auth/drive.file',
+  REDIRECT_URI: 'https://andrewleeholzman-lang.github.io/The-Stacks/',
+  FOLDER_NAME: 'The Stacks',
+};
+
+// API keys stored in localStorage only — never in source code
+function getAnthropicKey() { return localStorage.getItem('stacks_anthropic_key') || ''; }
+function setAnthropicKey(k) { localStorage.setItem('stacks_anthropic_key', k.trim()); }
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  accessToken: null,
+  rootFolderId: null,
+  metadataFileId: null,
+  metadata: {
+    shelves: {},
+    books: {},
+    settings: {}
+  },
+  currentShelfId: null,
+  currentBookId: null,
+  pdfDoc: null,
+  currentPage: 1,
+  totalPages: 0,
+  catalogueData: null,
+  pendingFile: null,
+  pendingPlaceholder: null,
+  apodData: null,
+};
+
+const SPINE_COLORS = [
+  '#5a3e2b','#2b3e5a','#3e5a2b','#5a2b3e','#3e2b5a',
+  '#6b4c2a','#2a4c6b','#4c6b2a','#6b2a4c','#2a6b4c',
+  '#7a4a1a','#1a4a7a','#4a7a1a','#7a1a4a','#1a7a4a',
+];
+
+const SHAKESPEARE_QUOTES = [
+  { text: "What's in a name? That which we call a rose / By any other name would smell as sweet.", attribution: "Romeo and Juliet, II.ii" },
+  { text: "All the world's a stage, and all the men and women merely players.", attribution: "As You Like It, II.vii" },
+  { text: "To be, or not to be, that is the question.", attribution: "Hamlet, III.i" },
+  { text: "This above all: to thine own self be true.", attribution: "Hamlet, I.iii" },
+  { text: "The course of true love never did run smooth.", attribution: "A Midsummer Night's Dream, I.i" },
+  { text: "We know what we are, but know not what we may be.", attribution: "Hamlet, IV.v" },
+  { text: "How sharper than a serpent's tooth it is / To have a thankless child!", attribution: "King Lear, I.iv" },
+  { text: "Good night, good night! Parting is such sweet sorrow.", attribution: "Romeo and Juliet, II.ii" },
+  { text: "The lady doth protest too much, methinks.", attribution: "Hamlet, III.ii" },
+  { text: "Brevity is the soul of wit.", attribution: "Hamlet, II.ii" },
+  { text: "What a piece of work is a man! How noble in reason!", attribution: "Hamlet, II.ii" },
+  { text: "Cowards die many times before their deaths; the valiant never taste of death but once.", attribution: "Julius Caesar, II.ii" },
+  { text: "There is nothing either good or bad, but thinking makes it so.", attribution: "Hamlet, II.ii" },
+  { text: "All that glitters is not gold.", attribution: "The Merchant of Venice, II.vii" },
+  { text: "The quality of mercy is not strained; it droppeth as the gentle rain from heaven.", attribution: "The Merchant of Venice, IV.i" },
+  { text: "We are such stuff as dreams are made on, and our little life is rounded with a sleep.", attribution: "The Tempest, IV.i" },
+  { text: "Hell is empty and all the devils are here.", attribution: "The Tempest, I.ii" },
+  { text: "Some are born great, some achieve greatness, and some have greatness thrust upon 'em.", attribution: "Twelfth Night, II.v" },
+  { text: "The robbed that smiles, steals something from the thief.", attribution: "Othello, I.iii" },
+  { text: "Our doubts are traitors, and make us lose the good we oft might win, by fearing to attempt.", attribution: "Measure for Measure, I.iv" },
+];
+
+// ═══════════════════════════════════════════════════════
+// OAUTH
+// ═══════════════════════════════════════════════════════
+function initAuth() {
+  // Check for token in URL hash (redirect from Google)
+  const hash = window.location.hash.substring(1);
+  if (hash) {
+    const params = new URLSearchParams(hash);
+    const token = params.get('access_token');
+    if (token) {
+      state.accessToken = token;
+      sessionStorage.setItem('goog_token', token);
+      window.location.hash = '';
+      initApp();
+      return;
+    }
+  }
+  // Check session storage
+  const stored = sessionStorage.getItem('goog_token');
+  if (stored) {
+    state.accessToken = stored;
+    initApp();
+    return;
+  }
+  // Show auth screen
+  document.getElementById('auth-screen').classList.remove('hidden');
+}
+
+document.getElementById('google-sign-in-btn').addEventListener('click', () => {
+  const params = new URLSearchParams({
+    client_id: CONFIG.CLIENT_ID,
+    redirect_uri: CONFIG.REDIRECT_URI,
+    response_type: 'token',
+    scope: CONFIG.SCOPES,
+    prompt: 'consent',
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+});
+
+// ═══════════════════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════════════════
+async function initApp() {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('app').style.display = 'flex';
+
+  showNotification('Connecting to Drive…');
+  try {
+    await ensureRootFolder();
+    await loadMetadata();
+    renderSidebar();
+    showHome();
+    loadApod();
+    showShakespeareQuote();
+    setSyncStatus('synced');
+    notify('Connected to The Stacks');
+    // Prompt for API key on first use
+    if (!getAnthropicKey()) {
+      setTimeout(() => openSettingsModal(), 800);
+    }
+  } catch(e) {
+    console.error(e);
+    notify('Drive connection failed. Please refresh.', true);
+    setSyncStatus('error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE DRIVE API
+// ═══════════════════════════════════════════════════════
+async function driveRequest(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': `Bearer ${state.accessToken}`,
+      ...(opts.headers || {}),
+    },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('goog_token');
+    notify('Session expired. Please reconnect.', true);
+    setTimeout(() => location.reload(), 2000);
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
+
+async function ensureRootFolder() {
+  // Search for existing Stacks folder
+  const q = encodeURIComponent(`name='${CONFIG.FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    state.rootFolderId = data.files[0].id;
+    return;
+  }
+  // Create folder
+  const createRes = await driveRequest('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: CONFIG.FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+  });
+  const folder = await createRes.json();
+  state.rootFolderId = folder.id;
+}
+
+async function loadMetadata() {
+  // Find metadata.json
+  const q = encodeURIComponent(`name='metadata.json' and '${state.rootFolderId}' in parents and trashed=false`);
+  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    state.metadataFileId = data.files[0].id;
+    const contentRes = await driveRequest(`https://www.googleapis.com/drive/v3/files/${state.metadataFileId}?alt=media`);
+    state.metadata = await contentRes.json();
+  } else {
+    // Create fresh metadata.json
+    await saveMetadata();
+  }
+}
+
+async function saveMetadata() {
+  setSyncStatus('syncing');
+  const content = JSON.stringify(state.metadata, null, 2);
+  const blob = new Blob([content], { type: 'application/json' });
+
+  if (state.metadataFileId) {
+    await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${state.metadataFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: blob,
+    });
+  } else {
+    const meta = { name: 'metadata.json', parents: [state.rootFolderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      body: form,
+    });
+    const created = await res.json();
+    state.metadataFileId = created.id;
+  }
+  setSyncStatus('synced');
+}
+
+async function ensureShelfFolder(shelfName) {
+  const q = encodeURIComponent(`name='${shelfName}' and mimeType='application/vnd.google-apps.folder' and '${state.rootFolderId}' in parents and trashed=false`);
+  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`);
+  const data = await res.json();
+  if (data.files && data.files.length > 0) return data.files[0].id;
+  const createRes = await driveRequest('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: shelfName, mimeType: 'application/vnd.google-apps.folder', parents: [state.rootFolderId] }),
+  });
+  const folder = await createRes.json();
+  return folder.id;
+}
+
+async function uploadPdfToDrive(file, shelfFolderId, filename) {
+  const meta = { name: filename, parents: [shelfFolderId], mimeType: 'application/pdf' };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', file);
+  const res = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    body: form,
+  });
+  return await res.json();
+}
+
+async function fetchPdfFromDrive(fileId) {
+  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+// ═══════════════════════════════════════════════════════
+// OPEN LIBRARY
+// ═══════════════════════════════════════════════════════
+async function lookupOpenLibrary(title) {
+  try {
+    const q = encodeURIComponent(title);
+    const res = await fetch(`https://openlibrary.org/search.json?title=${q}&limit=5`);
+    const data = await res.json();
+    if (!data.docs || data.docs.length === 0) return null;
+    return data.docs.map(d => ({
+      title: d.title || '',
+      author: d.author_name ? d.author_name[0] : '',
+      year: d.first_publish_year || '',
+      publisher: d.publisher ? d.publisher[0] : '',
+      dewey: d.ddc ? d.ddc[0] : '',
+      cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+    }));
+  } catch(e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════
+// CLAUDE API
+// ═══════════════════════════════════════════════════════
+async function callClaude(prompt) {
+  const key = getAnthropicKey();
+  if (!key) {
+    openSettingsModal();
+    throw new Error('Anthropic API key not set. Please add it in Settings.');
+  }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+async function assembleBibliography(topic) {
+  const prompt1 = `You are a scholarly librarian building a reading list for a personal library application called The Stacks. The user wants to create a shelf on the topic: "${topic}". Assemble the ideal reading list for a serious reader approaching this subject — the foundational works, the essential monographs, the key journal articles a graduate student or informed generalist would need. Do not consider availability or cost at this stage. Judge solely on scholarly merit, significance, and pedagogical value. Return a JSON object with two arrays: "books" (6–10 monographs or major works) and "articles" (2–4 key journal articles). Each item should have: title, author, year, publisher, dewey_decimal, annotation (2–3 sentences on why this work is significant and where it fits in the literature), and suggested_order (integer). Prioritize foundational scholarly works. Return only valid JSON, no preamble.`;
+
+  const raw1 = await callClaude(prompt1);
+  let bib;
+  try {
+    const clean = raw1.replace(/```json|```/g, '').trim();
+    bib = JSON.parse(clean);
+  } catch(e) {
+    throw new Error('Could not parse bibliography from Claude');
+  }
+
+  const titles = [...(bib.books||[]), ...(bib.articles||[])].map(b => b.title).join(', ');
+  const prompt2 = `You are a scholarly librarian working with a personal library application called The Stacks. The user has created a shelf on the topic: "${topic}". The following titles are already on their ideal reading list: ${titles}. Now consider what additional worthwhile reading on this topic is freely available from the following sources: Project Gutenberg (public domain books), OpenStax (open textbooks), and Internet Archive open access collections. Identify any items from these sources that would be genuinely valuable additions to this shelf — do not include them simply because they are free, only if they have real merit. Also flag if any items from the existing list are themselves available from these sources. Return a JSON object with: "free_additions" (array of new items with title, author, source, url, annotation) and "existing_available" (array of titles from the provided list that are freely available, with source and url). Return only valid JSON, no preamble.`;
+
+  const raw2 = await callClaude(prompt2);
+  let freeData;
+  try {
+    const clean = raw2.replace(/```json|```/g, '').trim();
+    freeData = JSON.parse(clean);
+  } catch(e) {
+    freeData = { free_additions: [], existing_available: [] };
+  }
+
+  return { bib, freeData };
+}
+
+// ═══════════════════════════════════════════════════════
+// NASA APOD
+// ═══════════════════════════════════════════════════════
+async function loadApod() {
+  try {
+    const res = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${CONFIG.NASA_KEY}`);
+    state.apodData = await res.json();
+    const thumb = document.getElementById('apod-thumb');
+    const titleEl = document.getElementById('apod-title');
+    if (state.apodData.url && (state.apodData.media_type === 'image')) {
+      thumb.src = state.apodData.url;
+      thumb.style.display = 'block';
+    }
+    titleEl.textContent = state.apodData.title || 'Astronomy Picture of the Day';
+  } catch(e) {
+    document.getElementById('apod-title').textContent = 'Astronomy Picture of the Day';
+  }
+}
+
+function showApodModal() {
+  if (!state.apodData) return;
+  document.getElementById('apod-modal-img').src = state.apodData.hdurl || state.apodData.url || '';
+  document.getElementById('apod-modal-img').style.display = state.apodData.media_type === 'image' ? 'block' : 'none';
+  document.getElementById('apod-modal-title').textContent = state.apodData.title || '';
+  document.getElementById('apod-modal-explanation').textContent = state.apodData.explanation || '';
+  document.getElementById('apod-modal').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════
+function notify(msg, isError = false) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = isError ? 'show error' : 'show';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+function showNotification(msg) { notify(msg); }
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (status === 'syncing' ? ' syncing' : status === 'error' ? ' error' : '');
+  label.textContent = status === 'syncing' ? 'Syncing…' : status === 'error' ? 'Error' : 'Synced';
+}
+
+function showShakespeareQuote() {
+  const q = SHAKESPEARE_QUOTES[Math.floor(Math.random() * SHAKESPEARE_QUOTES.length)];
+  document.getElementById('sq-text').textContent = `"${q.text}"`;
+  document.getElementById('sq-attribution').textContent = `— ${q.attribution}`;
+}
+
+function spineColor(id) {
+  const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return SPINE_COLORS[hash % SPINE_COLORS.length];
+}
+
+function genId() {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function hideAllViews() {
+  document.getElementById('home-screen').classList.add('hidden');
+  document.getElementById('shelf-view').classList.add('hidden');
+  document.getElementById('reader-view').classList.add('hidden');
+  document.getElementById('continue-bar').classList.add('hidden');
+}
+
+function setActiveSidebarLink(id) {
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function showHome() {
+  hideAllViews();
+  setActiveSidebarLink('nav-home');
+  document.getElementById('home-screen').classList.remove('hidden');
+  renderHome();
+}
+
+function showReading() {
+  hideAllViews();
+  setActiveSidebarLink('nav-reading');
+  document.getElementById('home-screen').classList.remove('hidden');
+  renderFilteredHome('reading');
+}
+
+function showRecent() {
+  hideAllViews();
+  setActiveSidebarLink('nav-recent');
+  document.getElementById('home-screen').classList.remove('hidden');
+  renderFilteredHome('recent');
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════
+function renderSidebar() {
+  const list = document.getElementById('shelf-nav-list');
+  list.innerHTML = '';
+  const shelves = Object.values(state.metadata.shelves || {});
+  shelves.sort((a, b) => a.name.localeCompare(b.name));
+  shelves.forEach(shelf => {
+    const books = Object.values(state.metadata.books || {}).filter(b => b.shelfId === shelf.id);
+    const div = document.createElement('div');
+    div.className = 'sidebar-link' + (state.currentShelfId === shelf.id ? ' active' : '');
+    div.id = `shelf-nav-${shelf.id}`;
+    div.innerHTML = `${shelf.name} <span class="sidebar-count">${books.length}</span>`;
+    div.onclick = () => showShelfView(shelf.id);
+    list.appendChild(div);
+  });
+}
+
+function renderHome() {
+  const container = document.getElementById('shelves-container');
+  container.innerHTML = '';
+
+  // Continue reading bar
+  const inProgress = Object.values(state.metadata.books || {})
+    .filter(b => b.status === 'reading' && b.driveFileId)
+    .sort((a, b) => (b.lastOpened || 0) - (a.lastOpened || 0));
+
+  if (inProgress.length > 0) {
+    const book = inProgress[0];
+    document.getElementById('cb-book-title').textContent = book.title;
+    document.getElementById('cb-book-author').textContent = book.author;
+    const pct = book.totalPages ? Math.round((book.currentPage / book.totalPages) * 100) : 0;
+    document.getElementById('cb-book-progress').textContent = `p.${book.currentPage} — ${pct}%`;
+    document.getElementById('cb-open-btn').onclick = () => openReader(book.id);
+    document.getElementById('continue-bar').classList.remove('hidden');
+  }
+
+  const shelves = Object.values(state.metadata.shelves || {});
+  if (shelves.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:4rem 2rem;color:var(--text-muted);">
+      <div style="font-size:3rem;margin-bottom:1rem;">📚</div>
+      <div style="font-family:var(--font-head);font-size:1.3rem;margin-bottom:0.5rem;color:var(--text-dim);">Your library awaits</div>
+      <div style="font-style:italic;margin-bottom:1.5rem;">Create your first shelf to begin.</div>
+      <button class="btn-gold" onclick="openNewShelfModal()">+ New Shelf</button>
+    </div>`;
+    return;
+  }
+
+  shelves.sort((a, b) => a.name.localeCompare(b.name));
+  shelves.forEach(shelf => renderShelfRow(container, shelf));
+}
+
+function renderFilteredHome(filter) {
+  const container = document.getElementById('shelves-container');
+  container.innerHTML = '';
+  let books = Object.values(state.metadata.books || {});
+  let title = '';
+
+  if (filter === 'reading') {
+    books = books.filter(b => b.status === 'reading');
+    title = 'Currently Reading';
+  } else if (filter === 'recent') {
+    books = books.sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 20);
+    title = 'Recently Added';
+  }
+
+  const section = document.createElement('div');
+  section.className = 'shelf-row';
+  section.innerHTML = `<div class="home-section-title">${title}</div>`;
+  const spineRow = document.createElement('div');
+  spineRow.className = 'spine-row';
+  books.forEach(book => spineRow.appendChild(makeSpineCard(book)));
+  section.appendChild(spineRow);
+  container.appendChild(section);
+}
+
+function renderShelfRow(container, shelf) {
+  const books = Object.values(state.metadata.books || {}).filter(b => b.shelfId === shelf.id);
+  const row = document.createElement('div');
+  row.className = 'shelf-row';
+
+  const header = document.createElement('div');
+  header.className = 'shelf-row-header';
+  header.onclick = () => showShelfView(shelf.id);
+  header.innerHTML = `<span class="shelf-row-name">${shelf.name}</span>${shelf.dewey ? `<span class="shelf-row-dewey">${shelf.dewey}</span>` : ''}`;
+  row.appendChild(header);
+
+  const spineRow = document.createElement('div');
+  spineRow.className = 'spine-row';
+
+  const sorted = books.sort((a, b) => (a.suggestedOrder || 99) - (b.suggestedOrder || 99));
+  sorted.forEach(book => spineRow.appendChild(makeSpineCard(book)));
+
+  // Placeholder for bibliography items not yet added
+  const placeholders = (shelf.bibliography || []).filter(b => !b.driveFileId && !books.find(bk => bk.bibId === b.id));
+  placeholders.slice(0, 3).forEach(() => {
+    const ph = document.createElement('div');
+    ph.className = 'spine-card placeholder';
+    ph.innerHTML = '＋';
+    ph.title = 'Add a book';
+    ph.onclick = () => { showShelfView(shelf.id); };
+    spineRow.appendChild(ph);
+  });
+
+  row.appendChild(spineRow);
+  container.appendChild(row);
+}
+
+function makeSpineCard(book) {
+  const card = document.createElement('div');
+  card.className = 'spine-card';
+  card.style.background = spineColor(book.id);
+  const pct = book.totalPages ? Math.round((book.currentPage || 0) / book.totalPages * 100) : 0;
+  card.innerHTML = `
+    <div class="spine-title">${book.title}</div>
+    <div class="spine-progress"><div class="spine-progress-fill" style="width:${pct}%"></div></div>
+  `;
+  card.title = `${book.title} — ${book.author}`;
+  if (book.driveFileId) {
+    card.onclick = () => openReader(book.id);
+  } else {
+    card.style.opacity = '0.6';
+    card.style.cursor = 'default';
+  }
+  return card;
+}
+
+function showShelfView(shelfId) {
+  hideAllViews();
+  state.currentShelfId = shelfId;
+  const shelf = state.metadata.shelves[shelfId];
+  if (!shelf) return;
+
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById(`shelf-nav-${shelfId}`);
+  if (navEl) navEl.classList.add('active');
+
+  document.getElementById('sv-title').textContent = shelf.name;
+  document.getElementById('sv-dewey').textContent = shelf.dewey || '';
+  document.getElementById('shelf-view').classList.remove('hidden');
+  switchShelfTab('shelf');
+}
+
+function switchShelfTab(tab) {
+  ['shelf','order','progress'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`sv-${t}-content`).classList.toggle('hidden', t !== tab);
+  });
+
+  if (tab === 'shelf') renderShelfGrid();
+  else if (tab === 'order') renderReadingOrder();
+  else renderShelfProgress();
+}
+
+function renderShelfGrid() {
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  const books = Object.values(state.metadata.books || {}).filter(b => b.shelfId === state.currentShelfId);
+  const content = document.getElementById('sv-shelf-content');
+  content.innerHTML = '';
+  if (books.length === 0) {
+    content.innerHTML = `<div style="color:var(--text-muted);font-style:italic;padding:2rem 0;">No books yet. Add one above.</div>`;
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'book-grid';
+  books.sort((a, b) => (a.suggestedOrder || 99) - (b.suggestedOrder || 99)).forEach(book => {
+    const pct = book.totalPages ? Math.round((book.currentPage || 0) / book.totalPages * 100) : 0;
+    const statusText = book.status === 'complete' ? 'finished' : book.status === 'reading' ? `${pct}% read` : 'unread';
+    const statusClass = book.status === 'complete' ? 'finished' : book.status === 'reading' ? 'reading' : '';
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.innerHTML = `
+      <div class="book-spine-large" style="background:${spineColor(book.id)}" ${book.driveFileId ? `onclick="openReader('${book.id}')"` : ''}>
+        <div class="book-cover-title">${book.title}</div>
+        <div class="spine-progress"><div class="spine-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="book-card-meta">
+        <div class="book-card-title">${book.title}</div>
+        <div class="book-card-author">${book.author}</div>
+        <div class="book-card-status ${statusClass}">${statusText}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  content.appendChild(grid);
+}
+
+function renderReadingOrder() {
+  const shelf = state.metadata.shelves[state.currentShelfId];
+  const books = Object.values(state.metadata.books || {}).filter(b => b.shelfId === state.currentShelfId);
+  const content = document.getElementById('sv-order-content');
+  content.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'reading-order-list';
+  const sorted = books.sort((a, b) => (a.suggestedOrder || 99) - (b.suggestedOrder || 99));
+  sorted.forEach((book, i) => {
+    const item = document.createElement('div');
+    item.className = 'ro-item';
+    item.innerHTML = `
+      <div class="ro-num">${i + 1}</div>
+      <div class="ro-info">
+        <div class="ro-title">${book.title}</div>
+        <div class="ro-author">${book.author}${book.year ? `, ${book.year}` : ''}</div>
+        ${book.annotation ? `<div class="ro-annotation">${book.annotation}</div>` : ''}
+        ${book.dewey ? `<div class="ro-dewey">DDC ${book.dewey}</div>` : ''}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+  content.appendChild(list);
+}
+
+function renderShelfProgress() {
+  const books = Object.values(state.metadata.books || {}).filter(b => b.shelfId === state.currentShelfId);
+  const content = document.getElementById('sv-progress-content');
+  const total = books.length;
+  const finished = books.filter(b => b.status === 'complete').length;
+  const reading = books.filter(b => b.status === 'reading').length;
+  const unread = books.filter(b => b.status === 'unread' || !b.status).length;
+  content.innerHTML = `
+    <div style="max-width:500px;">
+      <div style="font-family:var(--font-head);font-size:2.5rem;color:var(--gold);margin-bottom:0.5rem;">${finished}<span style="font-size:1rem;color:var(--text-muted);"> / ${total} finished</span></div>
+      <div class="progress-bar" style="height:8px;margin-bottom:1.5rem;">
+        <div class="progress-bar-fill" style="width:${total ? Math.round(finished/total*100) : 0}%"></div>
+      </div>
+      ${books.sort((a,b) => (a.suggestedOrder||99)-(b.suggestedOrder||99)).map(b => {
+        const pct = b.totalPages ? Math.round((b.currentPage||0)/b.totalPages*100) : 0;
+        const col = b.status === 'complete' ? 'var(--green)' : b.status === 'reading' ? 'var(--gold)' : 'var(--text-muted)';
+        return `<div style="margin-bottom:0.8rem;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:0.2rem;">
+            <span style="font-family:var(--font-head);font-size:0.9rem;color:var(--text);">${b.title}</span>
+            <span style="font-size:0.8rem;color:${col};">${b.status === 'complete' ? 'Finished' : b.status === 'reading' ? pct+'%' : 'Unread'}</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%;background:${col};"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// PDF READER
+// ═══════════════════════════════════════════════════════
+async function openReader(bookId) {
+  const book = state.metadata.books[bookId];
+  if (!book || !book.driveFileId) return;
+
+  hideAllViews();
+  state.currentBookId = bookId;
+  document.getElementById('reader-view').classList.remove('hidden');
+  document.getElementById('reader-book-title').textContent = `${book.title} — ${book.author}`;
+  document.getElementById('bookmark-btn').className = 'btn-gold';
+
+  // Update last opened
+  state.metadata.books[bookId].lastOpened = Date.now();
+  if (!state.metadata.books[bookId].status || state.metadata.books[bookId].status === 'unread') {
+    state.metadata.books[bookId].status = 'reading';
+  }
+
+  try {
+    notify('Loading PDF…');
+    const url = await fetchPdfFromDrive(book.driveFileId);
+    state.pdfDoc = await pdfjsLib.getDocument(url).promise;
+    state.totalPages = state.pdfDoc.numPages;
+    state.currentPage = book.currentPage || 1;
+
+    // Update total pages in metadata
+    state.metadata.books[bookId].totalPages = state.totalPages;
+    await saveMetadata();
+
+    document.getElementById('total-pages').textContent = state.totalPages;
+    document.getElementById('page-input').max = state.totalPages;
+    await renderPage(state.currentPage);
+    notify('PDF loaded');
+  } catch(e) {
+    notify('Could not load PDF — Drive permission may have changed.', true);
+    console.error(e);
+  }
+}
+
+async function renderPage(pageNum) {
+  if (!state.pdfDoc) return;
+  pageNum = Math.max(1, Math.min(pageNum, state.totalPages));
+  state.currentPage = pageNum;
+
+  const page = await state.pdfDoc.getPage(pageNum);
+  const container = document.getElementById('reader-canvas-container');
+  const scale = Math.min((container.clientWidth - 48) / page.getViewport({ scale: 1 }).width, 2);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.getElementById('pdf-canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  document.getElementById('page-input').value = pageNum;
+  const pct = Math.round(pageNum / state.totalPages * 100);
+  document.getElementById('reader-progress-text').textContent = `Page ${pageNum} of ${state.totalPages} — ${pct}%`;
+  document.getElementById('bookmark-btn').className = 'btn-gold';
+}
+
+function prevPage() { if (state.currentPage > 1) renderPage(state.currentPage - 1); }
+function nextPage() { if (state.currentPage < state.totalPages) renderPage(state.currentPage + 1); }
+function jumpToPage(val) { renderPage(parseInt(val, 10)); }
+
+async function placeBookmark() {
+  if (!state.currentBookId) return;
+  state.metadata.books[state.currentBookId].currentPage = state.currentPage;
+  const pct = Math.round(state.currentPage / state.totalPages * 100);
+  if (pct >= 99) state.metadata.books[state.currentBookId].status = 'complete';
+  else state.metadata.books[state.currentBookId].status = 'reading';
+  await saveMetadata();
+  const btn = document.getElementById('bookmark-btn');
+  btn.textContent = '✓ Saved';
+  btn.className = 'btn-gold saved';
+  setTimeout(() => { btn.textContent = '🔖 Bookmark'; btn.className = 'btn-gold'; }, 2000);
+  notify(`Bookmarked page ${state.currentPage}`);
+}
+
+function closeReader() {
+  state.pdfDoc = null;
+  state.currentBookId = null;
+  if (state.currentShelfId) {
+    showShelfView(state.currentShelfId);
+  } else {
+    showHome();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// NEW SHELF / CATALOGUE FLOW
+// ═══════════════════════════════════════════════════════
+function openNewShelfModal() {
+  document.getElementById('new-shelf-modal').classList.remove('hidden');
+  document.getElementById('catalogue-step1').classList.remove('hidden');
+  document.getElementById('catalogue-step2').classList.add('hidden');
+  document.getElementById('catalogue-step3').classList.add('hidden');
+  document.getElementById('step1-dot').className = 'step-dot active';
+  document.getElementById('step2-dot').className = 'step-dot';
+  document.getElementById('step3-dot').className = 'step-dot';
+  document.getElementById('new-shelf-name').value = '';
+  document.getElementById('new-shelf-topic').value = '';
+  state.catalogueData = null;
+}
+
+function closeNewShelfModal() {
+  document.getElementById('new-shelf-modal').classList.add('hidden');
+}
+
+async function startCatalogueStep2() {
+  const name = document.getElementById('new-shelf-name').value.trim();
+  const topic = document.getElementById('new-shelf-topic').value.trim();
+  if (!name || !topic) { notify('Please fill in both fields.', true); return; }
+
+  document.getElementById('step1-dot').className = 'step-dot done';
+  document.getElementById('step2-dot').className = 'step-dot active';
+  document.getElementById('catalogue-step1').classList.add('hidden');
+  document.getElementById('catalogue-step2').classList.remove('hidden');
+  document.getElementById('step2-shelf-name').textContent = name;
+  document.getElementById('step2-loading').classList.remove('hidden');
+  document.getElementById('step2-content').classList.add('hidden');
+
+  try {
+    const { bib, freeData } = await assembleBibliography(topic);
+    state.catalogueData = { name, topic, bib, freeData };
+    renderBibliography(bib, freeData);
+    document.getElementById('step2-loading').classList.add('hidden');
+    document.getElementById('step2-content').classList.remove('hidden');
+  } catch(e) {
+    notify('Could not load bibliography: ' + e.message, true);
+    document.getElementById('step2-loading').innerHTML = `<div style="color:var(--red);">Error: ${e.message}</div>`;
+  }
+}
+
+function renderBibliography(bib, freeData) {
+  const freeAvailableTitles = (freeData.existing_available || []).map(f => f.title.toLowerCase());
+
+  document.getElementById('ai-panel-message').textContent =
+    `I've assembled the essential reading list for this subject. Below are the foundational works and key articles a serious student of this topic should encounter. Items marked in green can be fetched directly to your shelf; grey items you'll need to source yourself.`;
+
+  // Books section
+  const booksSection = document.getElementById('bib-books-section');
+  booksSection.innerHTML = '<div class="bib-section-title">Monographs & Major Works</div>';
+  (bib.books || []).sort((a, b) => a.suggested_order - b.suggested_order).forEach(book => {
+    const isFree = freeAvailableTitles.includes(book.title.toLowerCase());
+    const freeInfo = isFree ? freeData.existing_available.find(f => f.title.toLowerCase() === book.title.toLowerCase()) : null;
+    booksSection.appendChild(makeBibItem(book, isFree, freeInfo, 'book'));
+  });
+
+  // Articles section
+  const articlesSection = document.getElementById('bib-articles-section');
+  articlesSection.innerHTML = '<div class="bib-section-title">Key Journal Articles</div>';
+  (bib.articles || []).forEach(article => {
+    articlesSection.appendChild(makeBibItem(article, false, null, 'article'));
+  });
+
+  // Free additions section
+  const freeSection = document.getElementById('bib-free-section');
+  if (freeData.free_additions && freeData.free_additions.length > 0) {
+    freeSection.innerHTML = '<div class="bib-section-title">Also Freely Available — from Open Sources</div>';
+    freeData.free_additions.forEach(item => {
+      freeSection.appendChild(makeBibItem(item, true, item, 'free'));
+    });
+  } else {
+    freeSection.innerHTML = '';
+  }
+}
+
+function makeBibItem(item, isFree, freeInfo, type) {
+  const div = document.createElement('div');
+  div.className = `bib-item ${type === 'article' ? 'journal-item' : type === 'free' ? 'free-item' : 'book-item'}`;
+
+  let badge = '';
+  if (isFree && freeInfo) {
+    badge = `<div class="bib-badge badge-green">✓ free — ${freeInfo.source || 'Open Source'}</div>`;
+  } else if (type === 'article') {
+    badge = `<div class="bib-badge badge-blue">Journal Article</div>`;
+  } else {
+    badge = `<div class="bib-badge badge-grey">find yourself</div>`;
+  }
+
+  div.innerHTML = `
+    <input type="checkbox" class="bib-check" ${isFree ? 'checked' : ''} data-title="${(item.title||'').replace(/"/g,'&quot;')}" data-free="${isFree}">
+    <div class="bib-info">
+      <div class="bib-title">${item.title || ''}</div>
+      <div class="bib-author">${item.author || ''}</div>
+      <div class="bib-meta">${[item.year, item.publisher].filter(Boolean).join(' · ')}${item.dewey_decimal ? ` · DDC ${item.dewey_decimal}` : ''}</div>
+      ${item.annotation ? `<div class="bib-annotation">${item.annotation}</div>` : ''}
+      ${badge}
+      ${isFree && freeInfo && freeInfo.url ? `<div style="margin-top:0.3rem;"><a href="${freeInfo.url}" target="_blank" style="color:var(--gold-dim);font-size:0.8rem;">↗ Source</a></div>` : ''}
+    </div>
+  `;
+  return div;
+}
+
+async function startCatalogueStep3() {
+  if (!state.catalogueData) return;
+  document.getElementById('step2-dot').className = 'step-dot done';
+  document.getElementById('step3-dot').className = 'step-dot active';
+  document.getElementById('catalogue-step2').classList.add('hidden');
+  document.getElementById('catalogue-step3').classList.remove('hidden');
+
+  // Create shelf in metadata
+  const shelfId = genId();
+  const { name, topic, bib, freeData } = state.catalogueData;
+
+  const allBibItems = [
+    ...(bib.books || []).map(b => ({ ...b, type: 'book' })),
+    ...(bib.articles || []).map(a => ({ ...a, type: 'article' })),
+    ...(freeData.free_additions || []).map(f => ({ ...f, type: 'free', dewey_decimal: '' })),
+  ];
+
+  // Determine the dewey range
+  const deweyNums = allBibItems.map(b => parseInt(b.dewey_decimal)).filter(n => !isNaN(n));
+  const deweyRange = deweyNums.length > 0
+    ? (Math.min(...deweyNums) === Math.max(...deweyNums) ? `${Math.min(...deweyNums)}` : `${Math.min(...deweyNums)}–${Math.max(...deweyNums)}`)
+    : '';
+
+  state.metadata.shelves[shelfId] = {
+    id: shelfId,
+    name,
+    topic,
+    dewey: deweyRange,
+    dateCreated: Date.now(),
+    bibliography: allBibItems.map((b, i) => ({
+      id: genId(),
+      title: b.title,
+      author: b.author,
+      year: b.year,
+      publisher: b.publisher,
+      dewey: b.dewey_decimal,
+      annotation: b.annotation,
+      suggestedOrder: b.suggested_order || i + 1,
+      type: b.type,
+      freeUrl: b.url || null,
+      freeSource: b.source || null,
+    })),
+  };
+
+  state.currentShelfId = shelfId;
+
+  // Checked items
+  const checkedItems = [...document.querySelectorAll('.bib-check:checked')].map(cb => {
+    const title = cb.dataset.title;
+    return allBibItems.find(b => b.title === title);
+  }).filter(Boolean);
+
+  // Build step 3 UI
+  const container = document.getElementById('step3-items');
+  container.innerHTML = '';
+  let addedCount = 0;
+
+  document.getElementById('step3-subtitle').textContent = `Adding ${checkedItems.length} items to your shelf…`;
+
+  for (const item of checkedItems) {
+    const isFree = item.type === 'free' || !!(freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase());
+    const freeInfo = isFree ? (freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase()) || item : null;
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'bib-item book-item';
+    itemDiv.style.marginBottom = '0.5rem';
+
+    if (isFree && freeInfo && freeInfo.url) {
+      itemDiv.innerHTML = `
+        <div class="bib-info" style="flex:1;">
+          <div class="bib-title">${item.title}</div>
+          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+          <div id="status-${item.title?.replace(/\s/g,'_').slice(0,20)}" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">
+            <span class="spinner"></span> Fetching from ${freeInfo.source}…
+          </div>
+        </div>
+      `;
+      container.appendChild(itemDiv);
+
+      // Add as placeholder for now (direct PDF fetch from external URLs often blocked by CORS)
+      addBookToMetadata(shelfId, item, null, freeInfo);
+      addedCount++;
+      const statusEl = itemDiv.querySelector(`[id^="status-"]`);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);">✓ Added as placeholder — <a href="${freeInfo.url}" target="_blank" style="color:var(--gold-dim);">open source to download PDF</a></span>`;
+    } else {
+      // Manual add
+      itemDiv.innerHTML = `
+        <div class="bib-info" style="flex:1;">
+          <div class="bib-title">${item.title}</div>
+          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-shrink:0;">
+          <label style="font-size:0.8rem;">
+            <input type="file" accept=".pdf" style="display:none" onchange="handleStep3File(event, '${shelfId}', '${(item.title||'').replace(/'/g,"\\'")}', '${(item.author||'').replace(/'/g,"\\'")}')">
+            <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Browse</span>
+          </label>
+          <button class="btn-sm" onclick="skipStep3Item(this, '${shelfId}', '${(item.title||'').replace(/'/g,"\\'")}', '${(item.author||'').replace(/'/g,"\\'")}')">Skip</button>
+        </div>
+      `;
+      container.appendChild(itemDiv);
+    }
+  }
+
+  updateStep3Count(addedCount, checkedItems.length);
+  await saveMetadata();
+  renderSidebar();
+}
+
+function addBookToMetadata(shelfId, item, driveFileId, freeInfo) {
+  const bookId = genId();
+  state.metadata.books[bookId] = {
+    id: bookId,
+    shelfId,
+    title: item.title || '',
+    author: item.author || '',
+    year: item.year || '',
+    publisher: item.publisher || '',
+    dewey: item.dewey_decimal || item.dewey || '',
+    annotation: item.annotation || '',
+    suggestedOrder: item.suggested_order || 99,
+    driveFileId: driveFileId || null,
+    currentPage: 1,
+    totalPages: 0,
+    status: driveFileId ? 'unread' : 'placeholder',
+    dateAdded: Date.now(),
+    lastOpened: null,
+    freeUrl: freeInfo ? freeInfo.url : null,
+    freeSource: freeInfo ? freeInfo.source : null,
+  };
+}
+
+async function handleStep3File(event, shelfId, title, author) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const shelf = state.metadata.shelves[shelfId];
+  notify('Uploading PDF…');
+  try {
+    const folderId = await ensureShelfFolder(shelf.name);
+    const filename = `${title} — ${author}.pdf`;
+    const uploaded = await uploadPdfToDrive(file, folderId, filename);
+    // Find or create book entry
+    let book = Object.values(state.metadata.books).find(b => b.shelfId === shelfId && b.title === title);
+    if (book) {
+      book.driveFileId = uploaded.id;
+      book.status = 'unread';
+    } else {
+      addBookToMetadata(shelfId, { title, author }, uploaded.id, null);
+    }
+    await saveMetadata();
+    notify(`${title} added to shelf`);
+    // Update UI
+    const btn = event.target.closest('.bib-item')?.querySelector('label');
+    if (btn) btn.closest('.bib-item').innerHTML += `<div style="color:var(--green);font-size:0.8rem;margin-top:0.3rem;">✓ Added</div>`;
+    updateStep3Count();
+  } catch(e) {
+    notify('Upload failed: ' + e.message, true);
+  }
+}
+
+async function skipStep3Item(btn, shelfId, title, author) {
+  addBookToMetadata(shelfId, { title, author }, null, null);
+  await saveMetadata();
+  btn.closest('.bib-item').style.opacity = '0.4';
+  btn.textContent = 'Skipped';
+  btn.disabled = true;
+  updateStep3Count();
+  notify(`${title} added as placeholder`);
+}
+
+function updateStep3Count() {
+  const added = Object.values(state.metadata.books).filter(b => b.shelfId === state.currentShelfId && b.driveFileId).length;
+  const total = Object.values(state.metadata.books).filter(b => b.shelfId === state.currentShelfId).length;
+  document.getElementById('step3-count').textContent = `${added} of ${total} items on your shelf`;
+}
+
+async function finishShelfCreation() {
+  await saveMetadata();
+  closeNewShelfModal();
+  renderSidebar();
+  showShelfView(state.currentShelfId);
+  notify('Shelf created!');
+}
+
+// ═══════════════════════════════════════════════════════
+// ADD BOOK MODAL
+// ═══════════════════════════════════════════════════════
+function openAddBookModal() {
+  document.getElementById('add-book-modal').classList.remove('hidden');
+  document.getElementById('book-meta-form').classList.add('hidden');
+  document.getElementById('manual-search-section').classList.add('hidden');
+  document.getElementById('placeholder-selected').classList.add('hidden');
+  document.getElementById('placeholder-candidates').innerHTML = '';
+  switchAddTab('pdf');
+  populateShelfSelects();
+  state.pendingFile = null;
+}
+
+function closeAddBookModal() {
+  document.getElementById('add-book-modal').classList.add('hidden');
+  state.pendingFile = null;
+}
+
+function switchAddTab(tab) {
+  document.getElementById('add-tab-pdf').classList.toggle('active', tab === 'pdf');
+  document.getElementById('add-tab-placeholder').classList.toggle('active', tab === 'placeholder');
+  document.getElementById('add-pdf-content').classList.toggle('hidden', tab !== 'pdf');
+  document.getElementById('add-placeholder-content').classList.toggle('hidden', tab !== 'placeholder');
+}
+
+function populateShelfSelects() {
+  const shelves = Object.values(state.metadata.shelves || {});
+  ['meta-shelf', 'placeholder-shelf'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = shelves.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    if (state.currentShelfId) sel.value = state.currentShelfId;
+  });
+}
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') processFile(file);
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) processFile(file);
+}
+
+async function processFile(file) {
+  state.pendingFile = file;
+  // Try to guess title from filename
+  const nameGuess = file.name.replace('.pdf', '').split('—')[0].trim();
+  document.getElementById('meta-title').value = nameGuess;
+  document.getElementById('meta-author').value = '';
+  document.getElementById('meta-year').value = '';
+  document.getElementById('meta-publisher').value = '';
+  document.getElementById('meta-dewey').value = '';
+  document.getElementById('book-meta-form').classList.remove('hidden');
+
+  // Open Library lookup
+  if (nameGuess.length > 3) {
+    notify('Looking up metadata…');
+    const results = await lookupOpenLibrary(nameGuess);
+    if (results && results.length > 0) {
+      const top = results[0];
+      document.getElementById('meta-title').value = top.title || nameGuess;
+      document.getElementById('meta-author').value = top.author || '';
+      document.getElementById('meta-year').value = top.year || '';
+      document.getElementById('meta-publisher').value = top.publisher || '';
+      document.getElementById('meta-dewey').value = top.dewey || '';
+      notify('Metadata found');
+    }
+  }
+}
+
+function showManualSearch() {
+  document.getElementById('manual-search-section').classList.remove('hidden');
+}
+
+async function doManualSearch() {
+  const q = document.getElementById('manual-search-input').value.trim();
+  if (!q) return;
+  notify('Searching…');
+  const results = await lookupOpenLibrary(q);
+  const container = document.getElementById('search-candidates');
+  container.innerHTML = '';
+  if (!results || results.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:0.9rem;">No results found.</div>';
+    return;
+  }
+  results.slice(0, 5).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'ol-candidate';
+    div.innerHTML = `<div class="ol-candidate-title">${r.title}</div><div class="ol-candidate-meta">${r.author}${r.year ? `, ${r.year}` : ''}</div>`;
+    div.onclick = () => {
+      document.getElementById('meta-title').value = r.title;
+      document.getElementById('meta-author').value = r.author;
+      document.getElementById('meta-year').value = r.year;
+      document.getElementById('meta-publisher').value = r.publisher;
+      document.getElementById('meta-dewey').value = r.dewey;
+      container.innerHTML = '';
+      document.getElementById('manual-search-section').classList.add('hidden');
+    };
+    container.appendChild(div);
+  });
+}
+
+async function confirmAddBook() {
+  if (!state.pendingFile) { notify('No file selected.', true); return; }
+  const title = document.getElementById('meta-title').value.trim();
+  const author = document.getElementById('meta-author').value.trim();
+  const shelfId = document.getElementById('meta-shelf').value;
+  const shelf = state.metadata.shelves[shelfId];
+  if (!title || !shelfId || !shelf) { notify('Please fill in title and select a shelf.', true); return; }
+
+  notify('Uploading to Drive…');
+  try {
+    const folderId = await ensureShelfFolder(shelf.name);
+    const filename = `${title}${author ? ' — ' + author : ''}.pdf`;
+    const uploaded = await uploadPdfToDrive(state.pendingFile, folderId, filename);
+    const bookId = genId();
+    state.metadata.books[bookId] = {
+      id: bookId,
+      shelfId,
+      title,
+      author,
+      year: document.getElementById('meta-year').value,
+      publisher: document.getElementById('meta-publisher').value,
+      dewey: document.getElementById('meta-dewey').value,
+      driveFileId: uploaded.id,
+      currentPage: 1,
+      totalPages: 0,
+      status: 'unread',
+      dateAdded: Date.now(),
+      lastOpened: null,
+    };
+    await saveMetadata();
+    closeAddBookModal();
+    renderSidebar();
+    if (state.currentShelfId === shelfId) switchShelfTab('shelf');
+    notify(`"${title}" added to ${shelf.name}`);
+  } catch(e) {
+    notify('Upload failed: ' + e.message, true);
+  }
+}
+
+async function doPlaceholderSearch() {
+  const q = document.getElementById('placeholder-search-input').value.trim();
+  if (!q) return;
+  const results = await lookupOpenLibrary(q);
+  const container = document.getElementById('placeholder-candidates');
+  container.innerHTML = '';
+  if (!results || results.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-style:italic;">No results.</div>';
+    return;
+  }
+  results.slice(0, 5).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'ol-candidate';
+    div.innerHTML = `<div class="ol-candidate-title">${r.title}</div><div class="ol-candidate-meta">${r.author}${r.year ? `, ${r.year}` : ''}</div>`;
+    div.onclick = () => {
+      state.pendingPlaceholder = r;
+      container.innerHTML = '';
+      document.getElementById('placeholder-selected').classList.remove('hidden');
+      document.getElementById('placeholder-selected-info').innerHTML = `
+        <div class="bib-info">
+          <div class="bib-title">${r.title}</div>
+          <div class="bib-author">${r.author}</div>
+          <div class="bib-meta">${[r.year, r.publisher].filter(Boolean).join(' · ')}</div>
+        </div>
+      `;
+    };
+    container.appendChild(div);
+  });
+}
+
+async function confirmAddPlaceholder() {
+  if (!state.pendingPlaceholder) return;
+  const shelfId = document.getElementById('placeholder-shelf').value;
+  const shelf = state.metadata.shelves[shelfId];
+  if (!shelfId || !shelf) { notify('Please select a shelf.', true); return; }
+  const r = state.pendingPlaceholder;
+  const bookId = genId();
+  state.metadata.books[bookId] = {
+    id: bookId,
+    shelfId,
+    title: r.title,
+    author: r.author,
+    year: r.year,
+    publisher: r.publisher,
+    dewey: r.dewey,
+    driveFileId: null,
+    currentPage: 1,
+    totalPages: 0,
+    status: 'placeholder',
+    dateAdded: Date.now(),
+    lastOpened: null,
+  };
+  await saveMetadata();
+  closeAddBookModal();
+  renderSidebar();
+  if (state.currentShelfId === shelfId) switchShelfTab('shelf');
+  notify(`"${r.title}" added as placeholder`);
+}
+
+// ═══════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════
+function openSettingsModal() {
+  const key = getAnthropicKey();
+  const input = document.getElementById('settings-anthropic-key');
+  input.value = key ? '••••••••••••••••••••' : '';
+  input.dataset.hasKey = key ? 'true' : 'false';
+  updateKeyStatus();
+  document.getElementById('settings-modal').classList.remove('hidden');
+  if (!key) setTimeout(() => { input.value = ''; input.focus(); }, 50);
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function updateKeyStatus() {
+  const el = document.getElementById('settings-key-status');
+  const key = getAnthropicKey();
+  if (key) {
+    el.innerHTML = `<span style="color:var(--green);">✓ Key saved</span> <span style="color:var(--text-muted);"> — ends in …${key.slice(-6)}</span>`;
+  } else {
+    el.innerHTML = `<span style="color:var(--text-muted);font-style:italic;">No key saved. The AI bibliography feature will not work until a key is added.</span>`;
+  }
+}
+
+function saveSettingsAndClose() {
+  const input = document.getElementById('settings-anthropic-key');
+  const val = input.value.trim();
+  // Don't overwrite with the masked placeholder
+  if (val && val !== '••••••••••••••••••••') {
+    setAnthropicKey(val);
+    notify('API key saved');
+  } else if (!val) {
+    notify('No key entered — existing key unchanged', false);
+  }
+  updateKeyStatus();
+  closeSettingsModal();
+}
+
+function clearAnthropicKey() {
+  localStorage.removeItem('stacks_anthropic_key');
+  document.getElementById('settings-anthropic-key').value = '';
+  updateKeyStatus();
+  notify('API key cleared');
+}
+
+// Clear masked value on focus so user can type fresh key
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('settings-anthropic-key');
+  if (input) {
+    input.addEventListener('focus', () => {
+      if (input.value === '••••••••••••••••••••') input.value = '';
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════
+initAuth();
+</script>
+</body>
+</html>

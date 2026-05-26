@@ -2434,71 +2434,49 @@ async function startCatalogueStep3() {
 
   state.currentShelfId = shelfId;
 
-  // Checked items
-  const checkedItems = [...document.querySelectorAll('.bib-check:checked')].map(cb => {
-    const title = cb.dataset.title;
-    return allBibItems.find(b => b.title === title);
-  }).filter(Boolean);
+  // Collect all checked items by title from DOM, look up in allBibItems
+  // Use case-insensitive match to avoid HTML entity encoding mismatches
+  const checkedTitles = [...document.querySelectorAll('.bib-check:checked')]
+    .map(cb => cb.dataset.title.replace(/&quot;/g, '"'));
 
-  // Build step 3 UI
+  const checkedItems = checkedTitles.map(title =>
+    allBibItems.find(b => b.title.toLowerCase() === title.toLowerCase())
+  ).filter(Boolean);
+
+  // Also include any manually added entries (added via search/custom, not in DOM checkboxes)
+  // These were pushed directly into state.catalogueData.bib.books
+  const allSelected = [...checkedItems];
+
+  // Create all cards immediately — no upload step
+  allSelected.forEach(item => addBookToMetadata(shelfId, item, null, null));
+
   const container = document.getElementById('step3-items');
   container.innerHTML = '';
-  let addedCount = 0;
+  document.getElementById('step3-subtitle').textContent =
+    `${allSelected.length} card${allSelected.length !== 1 ? 's' : ''} added to your shelf.`;
 
-  document.getElementById('step3-subtitle').textContent = `Adding ${checkedItems.length} items to your shelf…`;
+  allSelected.forEach(item => {
+    const freeInfo = (freeData.existing_available || []).find(
+      f => f.title.toLowerCase() === (item.title||'').toLowerCase()
+    ) || (item.type === 'free' ? item : null);
+    const div = document.createElement('div');
+    div.className = 'bib-item book-item';
+    div.style.marginBottom = '0.4rem';
+    div.innerHTML = `
+      <div class="bib-info">
+        <div class="bib-title">${item.title}</div>
+        <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+        ${freeInfo && freeInfo.url ? `<div style="margin-top:0.3rem;"><a href="${freeInfo.url}" target="_blank" style="color:var(--gold-dim);font-size:0.8rem;">↗ ${freeInfo.source || 'Free source'}</a></div>` : ''}
+      </div>
+      <span style="color:var(--green);font-size:0.85rem;flex-shrink:0;">✓ Card created</span>
+    `;
+    container.appendChild(div);
+  });
 
-  for (const item of checkedItems) {
-    const isFree = item.type === 'free' || !!(freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase());
-    const freeInfo = isFree ? (freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase()) || item : null;
-
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'bib-item book-item';
-    itemDiv.style.marginBottom = '0.5rem';
-
-    if (isFree && freeInfo && freeInfo.url) {
-      const bookId = addBookToMetadata(shelfId, item, null, freeInfo);
-      addedCount++;
-      itemDiv.innerHTML = `
-        <div class="bib-info" style="flex:1;">
-          <div class="bib-title">${item.title}</div>
-          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">
-            Freely available — download the PDF then upload it below.
-          </div>
-          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
-            <a href="${freeInfo.url}" target="_blank" class="btn-sm" style="color:var(--gold-dim);border-color:var(--gold-dim);text-decoration:none;">↗ Open source</a>
-            <label style="cursor:pointer;">
-              <input type="file" accept=".pdf" style="display:none" onchange="fulfillPlaceholder(event, '${bookId}')">
-              <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Upload PDF</span>
-            </label>
-            <span class="placeholder-done-${bookId}" style="color:var(--green);font-size:0.8rem;display:none;">✓ Uploaded</span>
-          </div>
-        </div>
-      `;
-      container.appendChild(itemDiv);
-    } else {
-      // Manual add
-      itemDiv.innerHTML = `
-        <div class="bib-info" style="flex:1;">
-          <div class="bib-title">${item.title}</div>
-          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;flex-shrink:0;">
-          <label style="font-size:0.8rem;">
-            <input type="file" accept=".pdf" style="display:none" onchange="handleStep3File(event, '${shelfId}', '${(item.title||'').replace(/'/g,"\\'")}', '${(item.author||'').replace(/'/g,"\\'")}')">
-            <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Browse</span>
-          </label>
-          <button class="btn-sm" onclick="skipStep3Item(this, '${shelfId}', '${(item.title||'').replace(/'/g,"\\'")}', '${(item.author||'').replace(/'/g,"\\'")}')">Skip</button>
-        </div>
-      `;
-      container.appendChild(itemDiv);
-    }
-  }
-
-  updateStep3Count(addedCount, checkedItems.length);
   await saveMetadata();
   renderSidebar();
 }
+
 
 function addBookToMetadata(shelfId, item, driveFileId, freeInfo) {
   const bookId = genId();
@@ -3065,6 +3043,7 @@ async function startLibrarianStep3() {
   document.getElementById('lib-step2').classList.add('hidden');
   document.getElementById('lib-step3').classList.remove('hidden');
 
+
   const existingTitles = Object.values(state.metadata.books || {})
     .filter(b => b.shelfId === shelfId)
     .map(b => b.title.toLowerCase());
@@ -3075,65 +3054,47 @@ async function startLibrarianStep3() {
     ...((freeData.free_additions || []).filter(f => !existingTitles.includes(f.title.toLowerCase()))).map(f => ({ ...f, type: 'free', dewey_decimal: '' })),
   ].filter(item => !existingTitles.includes((item.title||'').toLowerCase()));
 
-  const checkedItems = [...document.querySelectorAll('#lib-bib-books-section .bib-check:checked, #lib-bib-articles-section .bib-check:checked, #lib-bib-free-section .bib-check:checked')]
-    .map(cb => allBibItems.find(b => b.title === cb.dataset.title))
-    .filter(Boolean);
+  // Collect checked items by title (case-insensitive, handle HTML entities)
+  const checkedTitles = [...document.querySelectorAll('#lib-bib-books-section .bib-check:checked, #lib-bib-articles-section .bib-check:checked, #lib-bib-free-section .bib-check:checked')]
+    .map(cb => cb.dataset.title.replace(/&quot;/g, '"'));
 
-  // Deduplicate against existing
-  const uniqueChecked = checkedItems.filter(item => !existingTitles.includes((item.title||'').toLowerCase()));
+  const uniqueChecked = checkedTitles
+    .map(title => allBibItems.find(b => b.title.toLowerCase() === title.toLowerCase()))
+    .filter(Boolean)
+    .filter(item => !existingTitles.includes((item.title||'').toLowerCase()));
 
-  document.getElementById('lib-step3-subtitle').textContent = `Adding ${uniqueChecked.length} new item${uniqueChecked.length !== 1 ? 's' : ''} to ${shelf.name}`;
+  // Create cards immediately
+  uniqueChecked.forEach(item => addBookToMetadata(shelfId, item, null, null));
+
+  document.getElementById('lib-step3-subtitle').textContent =
+    `${uniqueChecked.length} card${uniqueChecked.length !== 1 ? 's' : ''} added to ${shelf.name}.`;
 
   const container = document.getElementById('lib-step3-items');
   container.innerHTML = '';
-  let addedCount = 0;
+  uniqueChecked.forEach(item => {
+    const freeInfo = (freeData.existing_available || []).find(
+      f => f.title.toLowerCase() === (item.title||'').toLowerCase()
+    ) || (item.type === 'free' ? item : null);
+    const div = document.createElement('div');
+    div.className = 'bib-item book-item';
+    div.style.marginBottom = '0.4rem';
+    div.innerHTML = `
+      <div class="bib-info">
+        <div class="bib-title">${item.title}</div>
+        <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
+        ${freeInfo && freeInfo.url ? `<div style="margin-top:0.3rem;"><a href="${freeInfo.url}" target="_blank" style="color:var(--gold-dim);font-size:0.8rem;">↗ ${freeInfo.source || 'Free source'}</a></div>` : ''}
+      </div>
+      <span style="color:var(--green);font-size:0.85rem;flex-shrink:0;">✓ Card created</span>
+    `;
+    container.appendChild(div);
+  });
 
-  for (const item of uniqueChecked) {
-    const isFree = item.type === 'free' || !!(freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase());
-    const freeInfo = isFree ? (freeData.existing_available || []).find(f => f.title.toLowerCase() === (item.title||'').toLowerCase()) || item : null;
-
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'bib-item book-item';
-    itemDiv.style.marginBottom = '0.5rem';
-
-    if (isFree && freeInfo && freeInfo.url) {
-      const bookId = addBookToMetadata(shelfId, item, null, freeInfo);
-      addedCount++;
-      itemDiv.innerHTML = `
-        <div class="bib-info" style="flex:1;">
-          <div class="bib-title">${item.title}</div>
-          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">Freely available — download then upload below.</div>
-          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
-            <a href="${freeInfo.url}" target="_blank" class="btn-sm" style="color:var(--gold-dim);border-color:var(--gold-dim);text-decoration:none;">↗ Open source</a>
-            <label style="cursor:pointer;">
-              <input type="file" accept=".pdf" style="display:none" onchange="fulfillPlaceholder(event, '${bookId}')">
-              <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Upload PDF</span>
-            </label>
-            <span class="placeholder-done-${bookId}" style="color:var(--green);font-size:0.8rem;display:none;">✓ Uploaded</span>
-          </div>
-        </div>`;
-    } else {
-      itemDiv.innerHTML = `
-        <div class="bib-info" style="flex:1;">
-          <div class="bib-title">${item.title}</div>
-          <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;flex-shrink:0;">
-          <label style="cursor:pointer;">
-            <input type="file" accept=".pdf" style="display:none" onchange="handleStep3File(event, '${shelfId}', '${(item.title||'').replace(/'/g,"\'")}', '${(item.author||'').replace(/'/g,"\'")}')">
-            <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Browse</span>
-          </label>
-          <button class="btn-sm" onclick="skipStep3Item(this, '${shelfId}', '${(item.title||'').replace(/'/g,"\'")}', '${(item.author||'').replace(/'/g,"\'")}')">Skip</button>
-        </div>`;
-    }
-    container.appendChild(itemDiv);
-  }
-
-  document.getElementById('lib-step3-count').textContent = `${addedCount} of ${uniqueChecked.length} items ready`;
+  document.getElementById('lib-step3-count').textContent =
+    `${uniqueChecked.length} new card${uniqueChecked.length !== 1 ? 's' : ''} on your shelf`;
   await saveMetadata();
   renderSidebar();
 }
+
 
 async function finishLibrarianFlow() {
   await saveMetadata();

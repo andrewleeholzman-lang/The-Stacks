@@ -1452,7 +1452,7 @@
 const CONFIG = {
   CLIENT_ID: '411117886113-tsuf2cpajnklcov106kvhohluq7t66bc.apps.googleusercontent.com',
   NASA_KEY: 'DEMO_KEY',
-  SCOPES: 'https://www.googleapis.com/auth/drive.file',
+  SCOPES: 'https://www.googleapis.com/auth/drive',
   REDIRECT_URI: 'https://andrewleeholzman-lang.github.io/The-Stacks/',
   FOLDER_NAME: 'The Stacks',
 };
@@ -1580,8 +1580,19 @@ async function initApp() {
     }
   } catch(e) {
     console.error(e);
-    notify('Drive connection failed. Please refresh.', true);
+    notify('Drive error: ' + e.message, true);
     setSyncStatus('error');
+    // Show error in UI so it's visible on mobile too
+    document.getElementById('main-content').innerHTML = `
+      <div style="padding:2rem;text-align:center;">
+        <div style="color:var(--red);font-family:var(--font-head);font-size:1.1rem;margin-bottom:0.5rem;">Connection Error</div>
+        <div style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">${e.message}</div>
+        <div style="color:var(--text-muted);font-size:0.85rem;font-style:italic;margin-bottom:1.5rem;">
+          This usually means the Google OAuth scope needs updating.<br>
+          Try signing out and back in — you may see a new permissions screen.
+        </div>
+        <button class="btn-gold" onclick="sessionStorage.removeItem('goog_token');location.reload();">Reconnect Google Drive</button>
+      </div>`;
   }
 }
 
@@ -1602,6 +1613,18 @@ async function driveRequest(url, opts = {}) {
     setTimeout(() => location.reload(), 2000);
     throw new Error('Unauthorized');
   }
+  if (!res.ok && res.status !== 200) {
+    // Try to get error detail from response body
+    let detail = '';
+    try {
+      const errBody = await res.clone().json();
+      detail = errBody.error ? ` — ${errBody.error.message}` : '';
+    } catch(e) {}
+    // Don't throw on 404 (handled by callers checking empty results)
+    if (res.status !== 404) {
+      throw new Error(`Drive API error ${res.status}${detail}`);
+    }
+  }
   return res;
 }
 
@@ -1610,18 +1633,23 @@ async function ensureRootFolder() {
   const q = encodeURIComponent(`name='${CONFIG.FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
   const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
   const data = await res.json();
+  if (data.error) throw new Error(`Drive search failed: ${data.error.message}`);
   if (data.files && data.files.length > 0) {
     state.rootFolderId = data.files[0].id;
+    console.log('Found existing Stacks folder:', state.rootFolderId);
     return;
   }
   // Create folder
+  console.log('Creating Stacks folder...');
   const createRes = await driveRequest('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: CONFIG.FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
   });
   const folder = await createRes.json();
+  if (folder.error) throw new Error(`Could not create Stacks folder: ${folder.error.message}`);
   state.rootFolderId = folder.id;
+  console.log('Created Stacks folder:', state.rootFolderId);
 }
 
 async function loadMetadata() {
@@ -1660,7 +1688,9 @@ async function saveMetadata() {
       body: form,
     });
     const created = await res.json();
+    if (created.error) throw new Error(`Could not save metadata: ${created.error.message}`);
     state.metadataFileId = created.id;
+    console.log('Created metadata.json:', state.metadataFileId);
   }
   setSyncStatus('synced');
 }
@@ -1688,7 +1718,11 @@ async function uploadPdfToDrive(file, shelfFolderId, filename) {
     method: 'POST',
     body: form,
   });
-  return await res.json();
+  const data = await res.json();
+  if (data.error) throw new Error(`Upload failed: ${data.error.message}`);
+  if (!data.id) throw new Error('Upload returned no file ID — check Drive permissions');
+  console.log('Uploaded to Drive:', data.id, filename);
+  return data;
 }
 
 async function fetchPdfFromDrive(fileId) {

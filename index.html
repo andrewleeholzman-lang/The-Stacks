@@ -1526,6 +1526,13 @@ async function callClaude(prompt) {
     }),
   });
   const data = await res.json();
+  if (!res.ok || data.error) {
+    const msg = data.error ? `${data.error.type}: ${data.error.message}` : `HTTP ${res.status}`;
+    throw new Error(`Anthropic API error — ${msg}`);
+  }
+  if (!data.content || !data.content[0]) {
+    throw new Error(`Unexpected response: ${JSON.stringify(data).slice(0, 300)}`);
+  }
   return data.content[0].text;
 }
 

@@ -909,6 +909,135 @@
     cursor: pointer;
   }
   .form-select:focus { outline: none; border-color: var(--gold-dim); }
+
+  /* ── MOBILE RESPONSIVE ── */
+
+  /* Hamburger button */
+  #hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* Sidebar overlay (mobile) */
+  #sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 49;
+  }
+
+  @media (max-width: 680px) {
+    /* Topbar */
+    #topbar { padding: 0 0.75rem; gap: 0.5rem; }
+    #topbar-title { font-size: 1.1rem; }
+    #apod-widget { max-width: 140px; }
+    #apod-thumb { display: none !important; }
+    #sync-label { display: none; }
+    #hamburger { display: block; }
+
+    /* Sidebar becomes a slide-in drawer */
+    #sidebar {
+      position: fixed;
+      left: -240px;
+      top: 0;
+      bottom: 0;
+      width: 240px;
+      z-index: 50;
+      transition: left 0.25s ease;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+    }
+    #sidebar.open { left: 0; }
+    #sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    #sidebar-overlay.open { opacity: 1; pointer-events: all; }
+
+    /* Sidebar links bigger tap targets */
+    .sidebar-link { padding: 0.65rem 1.2rem; font-size: 1rem; }
+    #new-shelf-btn { padding: 0.65rem 1.2rem; font-size: 1rem; }
+
+    /* Main content full width */
+    #app-shell { flex-direction: column; }
+    #main-content { width: 100%; }
+
+    /* Home screen padding */
+    #home-screen { padding: 1rem; }
+    #shelf-view { padding: 1rem; }
+
+    /* Spine cards — bigger on mobile */
+    .spine-card { width: 52px; height: 180px; }
+    .spine-card .spine-title { font-size: 0.62rem; }
+
+    /* Book grid */
+    .book-grid { gap: 1rem; }
+    .book-card { width: 100px; }
+    .book-spine-large { width: 100px; height: 150px; }
+
+    /* Continue bar — stack vertically */
+    #continue-bar {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+    #continue-bar .cb-title { width: 100%; }
+
+    /* Shelf view header buttons — wrap */
+    #shelf-view > div:first-child {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+    #shelf-view > div:first-child > div:last-child {
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    /* Modals — full screen on mobile */
+    .modal-overlay { align-items: flex-end; }
+    .modal {
+      width: 100%;
+      max-width: 100% !important;
+      max-height: 92vh;
+      border-radius: 12px 12px 0 0;
+      padding: 1.5rem 1.2rem;
+    }
+
+    /* Reader topbar — compact */
+    #reader-topbar { flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.75rem; height: auto; }
+    #reader-book-title { width: 100%; font-size: 0.85rem; order: -1; }
+    #reader-progress-text { font-size: 0.78rem; }
+    #bookmark-btn { font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+    #page-input { width: 44px; }
+
+    /* Step indicator labels — hide on very small screens */
+    .step-label { display: none; }
+
+    /* Bib items */
+    .bib-item { padding: 0.75rem; }
+
+    /* Form inputs — prevent iOS zoom (must be 16px+) */
+    .form-input, .form-select { font-size: 16px; }
+
+    /* Drop zone — smaller */
+    .drop-zone { padding: 1.5rem; }
+
+    /* Auth screen */
+    #auth-screen h1 { font-size: 2.5rem; }
+    #auth-screen p { font-size: 1rem; padding: 0 1rem; }
+  }
+
+  @media (max-width: 400px) {
+    .book-grid { gap: 0.75rem; }
+    .book-card { width: 85px; }
+    .book-spine-large { width: 85px; height: 130px; }
+    .spine-card { width: 44px; height: 160px; }
+  }
 </style>
 </head>
 <body>
@@ -933,6 +1062,7 @@
 
   <!-- Top Bar -->
   <div id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
     <div id="topbar-title">The Stacks</div>
     <div id="topbar-spacer"></div>
     <div id="apod-widget" onclick="showApodModal()">
@@ -949,6 +1079,8 @@
   <!-- App Shell -->
   <div id="app-shell">
 
+    <!-- Sidebar overlay -->
+    <div id="sidebar-overlay" onclick="closeSidebar()"></div>
     <!-- Sidebar -->
     <div id="sidebar">
       <div id="sidebar-inner">
@@ -1712,6 +1844,7 @@ function genId() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
 function hideAllViews() {
+  closeSidebar();
   document.getElementById('home-screen').classList.add('hidden');
   document.getElementById('shelf-view').classList.add('hidden');
   document.getElementById('reader-view').classList.add('hidden');
@@ -2922,6 +3055,27 @@ async function finishLibrarianFlow() {
   await saveMetadata();
   closeLibrarianModal();
   notify('Shelf updated');
+}
+
+
+// ═══════════════════════════════════════════════════════
+// MOBILE SIDEBAR
+// ═══════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const isOpen = sidebar.classList.contains('open');
+  if (isOpen) {
+    closeSidebar();
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
 // ═══════════════════════════════════════════════════════

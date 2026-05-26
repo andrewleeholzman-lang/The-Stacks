@@ -469,6 +469,7 @@
   .book-card-author { color: var(--text-dim); font-style: italic; }
   .book-card-status { font-size: 0.72rem; color: var(--text-muted); }
   .book-card-status.finished { color: var(--green); }
+  .book-card-status.placeholder-status { color: var(--gold-dim); cursor: pointer; }
   .book-card-status.reading { color: var(--gold-dim); }
 
   /* ── READING ORDER TAB ── */
@@ -1796,8 +1797,11 @@ function makeSpineCard(book) {
   if (book.driveFileId) {
     card.onclick = () => openReader(book.id);
   } else {
-    card.style.opacity = '0.6';
-    card.style.cursor = 'default';
+    card.style.opacity = '0.7';
+    card.style.cursor = 'pointer';
+    card.style.border = '2px dashed var(--border2)';
+    card.title = `${book.title} — click to upload PDF`;
+    card.onclick = () => openPlaceholderUpload(book.id);
   }
   return card;
 }
@@ -1842,12 +1846,12 @@ function renderShelfGrid() {
   grid.className = 'book-grid';
   books.sort((a, b) => (a.suggestedOrder || 99) - (b.suggestedOrder || 99)).forEach(book => {
     const pct = book.totalPages ? Math.round((book.currentPage || 0) / book.totalPages * 100) : 0;
-    const statusText = book.status === 'complete' ? 'finished' : book.status === 'reading' ? `${pct}% read` : 'unread';
-    const statusClass = book.status === 'complete' ? 'finished' : book.status === 'reading' ? 'reading' : '';
+    const statusText = book.status === 'complete' ? 'finished' : book.status === 'reading' ? `${pct}% read` : book.status === 'placeholder' ? '+ upload PDF' : 'unread';
+    const statusClass = book.status === 'complete' ? 'finished' : book.status === 'reading' ? 'reading' : book.status === 'placeholder' ? 'placeholder-status' : '';
     const card = document.createElement('div');
     card.className = 'book-card';
     card.innerHTML = `
-      <div class="book-spine-large" style="background:${spineColor(book.id)}" ${book.driveFileId ? `onclick="openReader('${book.id}')"` : ''}>
+      <div class="book-spine-large" style="background:${spineColor(book.id)};${!book.driveFileId ? 'border:2px dashed var(--border2);opacity:0.75;' : ''}" onclick="${book.driveFileId ? `openReader('${book.id}')` : `openPlaceholderUpload('${book.id}')`}">
         <div class="book-cover-title">${book.title}</div>
         <div class="spine-progress"><div class="spine-progress-fill" style="width:${pct}%"></div></div>
       </div>
@@ -2178,22 +2182,26 @@ async function startCatalogueStep3() {
     itemDiv.style.marginBottom = '0.5rem';
 
     if (isFree && freeInfo && freeInfo.url) {
+      const bookId = addBookToMetadata(shelfId, item, null, freeInfo);
+      addedCount++;
       itemDiv.innerHTML = `
         <div class="bib-info" style="flex:1;">
           <div class="bib-title">${item.title}</div>
           <div class="bib-author" style="font-style:italic;color:var(--text-dim);font-size:0.85rem;">${item.author || ''}</div>
-          <div id="status-${item.title?.replace(/\s/g,'_').slice(0,20)}" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">
-            <span class="spinner"></span> Fetching from ${freeInfo.source}…
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;font-style:italic;">
+            Freely available — download the PDF then upload it below.
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
+            <a href="${freeInfo.url}" target="_blank" class="btn-sm" style="color:var(--gold-dim);border-color:var(--gold-dim);text-decoration:none;">↗ Open source</a>
+            <label style="cursor:pointer;">
+              <input type="file" accept=".pdf" style="display:none" onchange="fulfillPlaceholder(event, '${bookId}')">
+              <span class="btn-sm" onclick="this.previousElementSibling.click()" style="cursor:pointer;">Upload PDF</span>
+            </label>
+            <span class="placeholder-done-${bookId}" style="color:var(--green);font-size:0.8rem;display:none;">✓ Uploaded</span>
           </div>
         </div>
       `;
       container.appendChild(itemDiv);
-
-      // Add as placeholder for now (direct PDF fetch from external URLs often blocked by CORS)
-      addBookToMetadata(shelfId, item, null, freeInfo);
-      addedCount++;
-      const statusEl = itemDiv.querySelector(`[id^="status-"]`);
-      if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);">✓ Added as placeholder — <a href="${freeInfo.url}" target="_blank" style="color:var(--gold-dim);">open source to download PDF</a></span>`;
     } else {
       // Manual add
       itemDiv.innerHTML = `
@@ -2239,6 +2247,7 @@ function addBookToMetadata(shelfId, item, driveFileId, freeInfo) {
     freeUrl: freeInfo ? freeInfo.url : null,
     freeSource: freeInfo ? freeInfo.source : null,
   };
+  return bookId;
 }
 
 async function handleStep3File(event, shelfId, title, author) {
@@ -2495,6 +2504,56 @@ async function confirmAddPlaceholder() {
   renderSidebar();
   if (state.currentShelfId === shelfId) switchShelfTab('shelf');
   notify(`"${r.title}" added as placeholder`);
+}
+
+
+// ═══════════════════════════════════════════════════════
+// PLACEHOLDER UPLOAD
+// ═══════════════════════════════════════════════════════
+function openPlaceholderUpload(bookId) {
+  const book = state.metadata.books[bookId];
+  if (!book) return;
+  // Create a temporary file input and trigger it
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf';
+  input.style.display = 'none';
+  input.onchange = (e) => fulfillPlaceholder(e, bookId);
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
+
+async function fulfillPlaceholder(event, bookId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const book = state.metadata.books[bookId];
+  if (!book) return;
+  const shelf = state.metadata.shelves[book.shelfId];
+  if (!shelf) return;
+
+  notify(`Uploading "${book.title}"…`);
+  try {
+    const folderId = await ensureShelfFolder(shelf.name);
+    const filename = `${book.title}${book.author ? ' — ' + book.author : ''}.pdf`;
+    const uploaded = await uploadPdfToDrive(file, folderId, filename);
+
+    state.metadata.books[bookId].driveFileId = uploaded.id;
+    state.metadata.books[bookId].status = 'unread';
+    await saveMetadata();
+
+    // Update any visible done indicators (Step 3 UI)
+    document.querySelectorAll(`.placeholder-done-${bookId}`).forEach(el => {
+      el.style.display = 'inline';
+    });
+
+    notify(`"${book.title}" is now on your shelf`);
+    // Refresh current view
+    if (state.currentShelfId === book.shelfId) switchShelfTab('shelf');
+    else renderSidebar();
+  } catch(e) {
+    notify(`Upload failed: ${e.message}`, true);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
